@@ -5,8 +5,11 @@ from scipy.optimize import curve_fit
 from requests.api import head
 import streamlit as st
 import requests
+from bokeh import events
 from bokeh.plotting import figure
-from bokeh.models import CrosshairTool
+from bokeh.models import CrosshairTool, CustomJS
+from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
+from math import radians, log, tan, pi
 
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
 
@@ -32,10 +35,16 @@ if 'current_panel' not in st.session_state:
                                         'tC':None,
                                         'Unom':None,
                                         'Inom':None,
-                                        'Pnom':None,
+                                        'Pnom':None
                                         }
 if 'conclusion' not in st.session_state:
     st.session_state.conclusion = ''
+if 'coordinates' not in st.session_state:
+    st.session_state.coordinates = {'lon':None,
+                                    'lat':None,
+                                    'x_Merc':None,
+                                    'y_Merc':None
+                                    }
 # ==============================
 
 API_URL = 'http://178.154.215.108/solar/panels'
@@ -53,8 +62,8 @@ def get_ivc(panel_label):
             return result.json()
 
 works = ['Introduction', 
-        'Work #1: The first work', 
-        'Work #2: The second work', 
+        'Work #1: Understanding IVC', 
+        'Work #2: Simulating geographics', 
         'Work #3: The third work',
         'Futher investigation']
 
@@ -83,6 +92,16 @@ def calculate_ivc(I_max: float, U_max: float, Isc: float, Uoc: float, cell_area:
     Pnom = Inom * Unom
     
     return [Unom, Inom, Pnom]
+
+# function to convert Mercator to lon lat https://wiki.gis-lab.info/w/Пересчет_координат_из_Lat/Long_в_проекцию_Меркатора_и_обратно
+def LatLongToMerc(lon, lat): 
+    rLat = radians(lat)
+    rLong = radians(lon)
+    a=6378137.0
+    x=a*rLong
+    y=a*log(tan(pi/4+rLat/2))
+    return [x,y]
+
 # ==============================
 # Sidebar
 # ==============================
@@ -145,11 +164,32 @@ if tab_selected == works[0]:
             once they are at the end of their lifespan after 10 to 30 years.
             '''
             '''
-Photovoltaic systems have long been used in specialized applications as stand-alone installations and grid-connected PV systems have been in use since the 1990s.[2] Photovoltaic modules were first mass-produced in 2000, when German environmentalists and the Eurosolar organization received government funding for a ten thousand roof program.[3]
-
-Decreasing costs has allowed PV to grow as an energy source. This has been partially driven by massive Chinese government investment in developing solar production capacity since 2000, and achieving economies of scale. Much of the price of production is from the key component polysilicon, and most of the world supply is produced in China, especially in Xinjiang. Beside the subsidies, the low prices of solar panels in the 2010s has been achieved through the low price of energy from coal and cheap labour costs in Xinjiang,[4] as well as improvements in manufacturing technology and efficiency.[5][6] Advances in technology and increased manufacturing scale have also increased the efficiency of photovoltaic installations.[2][7] Net metering and financial incentives, such as preferential feed-in tariffs for solar-generated electricity, have supported solar PV installations in many countries.[8] Panel prices dropped by a factor of 4 between 2004 and 2011. Module prices dropped 90% of over the 2010s, but began increasing sharply in 2021.[4][9]
-
-In 2019, worldwide installed PV capacity increased to more than 635 gigawatts (GW) covering approximately two percent of global electricity demand.[10] After hydro and wind powers, PV is the third renewable energy source in terms of global capacity. In 2019 the International Energy Agency expected a growth by 700 - 880 GW from 2019 to 2024.[11] In some instances, PV has offered the cheapest source of electrical power in regions with a high solar potential, with a bid for pricing as low as 0.01567 US$/kWh in Qatar in 2020.[12]
+            Photovoltaic systems have long been used in specialized applications 
+            as stand-alone installations and grid-connected PV systems have been 
+            in use since the 1990s.[2] Photovoltaic modules were first mass-produced 
+            in 2000, when German environmentalists and the Eurosolar organization 
+            received government funding for a ten thousand roof program.[3]
+            Decreasing costs has allowed PV to grow as an energy source. This has 
+            been partially driven by massive Chinese government investment in developing 
+            solar production capacity since 2000, and achieving economies of scale. Much 
+            of the price of production is from the key component polysilicon, and most of 
+            the world supply is produced in China, especially in Xinjiang. Beside the 
+            subsidies, the low prices of solar panels in the 2010s has been achieved through 
+            the low price of energy from coal and cheap labour costs in Xinjiang,[4] as well 
+            as improvements in manufacturing technology and efficiency.[5][6] Advances in 
+            technology and increased manufacturing scale have also increased the efficiency 
+            of photovoltaic installations.[2][7] Net metering and financial incentives, such 
+            as preferential feed-in tariffs for solar-generated electricity, have supported 
+            solar PV installations in many countries.[8] Panel prices dropped by a factor of 
+            4 between 2004 and 2011. Module prices dropped 90% of over the 2010s, but began 
+            increasing sharply in 2021.[4][9]
+            In 2019, worldwide installed PV capacity increased to more than 635 gigawatts (GW) 
+            covering approximately two percent of global electricity demand.[10] After hydro 
+            and wind powers, PV is the third renewable energy source in terms of global 
+            capacity. In 2019 the International Energy Agency expected a growth by 700 - 880 
+            GW from 2019 to 2024.[11] In some instances, PV has offered the cheapest source 
+            of electrical power in regions with a high solar potential, with a bid for pricing 
+            as low as 0.01567 US$/kWh in Qatar in 2020.[12]
 
         '''
         '''
@@ -334,13 +374,176 @@ if tab_selected == works[1]:
                 '''
 
 if tab_selected == works[2]:
+
     introduction_container = st.container()
+    work_description_container = st.container()
+    practice_container = st.container()
+    conclusions_container = st.container()
+
+    with introduction_container:
+        '''
+        ### Introduction & theoretical background  
+        The work of solar panels depends not only on its type, but also on the surrounding
+        environment....
+    
+        *Here add text*  
+        '''
+        '''
+        ---
+        '''
+    with work_description_container:
+        '''
+        ### The aim of the work
+        **The aim** of this work is to understand the main basics of the 
+        solar panels in terms of working in different conditions/geographics.  
+        You will know ....
+
+        *Here add text*  
+        '''
+        '''
+        ---
+        '''
+
+    with practice_container:
+        '''
+        ### Practice
+        First, choose coordinates on map and enter them in the fields above the map.  
+        Push the button to set up the chosen position.
+        '''
+
+        col1, col2 = st.columns(2)
+        with col1:
+            lon_inp = st.number_input('Longitude', min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+        with col2:
+            lat_inp = st.number_input('Latitude', min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+
+
+        if st.button('Set position'):
+            st.session_state.coordinates['lon'] = lon_inp
+            st.session_state.coordinates['lat'] = lat_inp
+            [st.session_state.coordinates['x_Merc'], st.session_state.coordinates['y_Merc']] = LatLongToMerc(lon_inp, lat_inp)   
+
+        tile_provider = get_provider(CARTODBPOSITRON_RETINA)
+        # range bounds supplied in web mercator coordinates
+        p = figure(x_range=(-1000000, 7000000), y_range=(3000000, 11000000),
+                    x_axis_type="mercator", y_axis_type="mercator")
+        p.add_tile(tile_provider)
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="cross", size=35, color='red')
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=10, alpha=0.3, color='red')
+        p.add_tools(CrosshairTool())
+        # add here callback event https://docs.bokeh.org/en/latest/docs/user_guide/interaction/callbacks.html
+        # p.js_on_event(events.DoubleTap, callback)
+        st.bokeh_chart(p, use_container_width=True)  
+
+        tilt_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        if st.sidebar.button('Calculate'):
+            pass
+        '''
+        ---
+        '''
+    with conclusions_container:
+        with st.expander('Modify conclusion'):
+            entered_conclusion = st.text_input('')
+            if st.button('Save'):
+                st.session_state.conclusion = entered_conclusion
+        '''
+        ### Conclusions  
+        '''
+        st.write(st.session_state.conclusion)
+        '''
+        ---
+        '''
+        '''
+        *Here you can make auto-check of your results.*
+        '''
+        if st.button('Check results'):
+            if len(st.session_state.conclusion) < 300:
+                st.write('> Not very informative conclusion!')
+            else:
+                '''> #### Auto tests completed! Seems everything is fine.  
+                '''
+                '''
+                *If you want, you can hide all the expanders above and print the report 
+                with Ctrl+P on Windows or Cmd+P on MacOs*
+                '''
+
 
 if tab_selected == works[3]:
     introduction_container = st.container()
+    work_description_container = st.container()
+    practice_container = st.container()
+    conclusions_container = st.container()
+
+    with introduction_container:
+        '''
+        ### Introduction & theoretical background  
+        The work of solar panels depends not only on its type, but also on the surrounding
+        environment....
+    
+        *Here add text*  
+        '''
+        '''
+        ---
+        '''
+        
+    with work_description_container:
+        '''
+        ### The aim of the work
+        **The aim** of this work is to understand the main basics of the 
+        solar panels in terms of working in different conditions/geographics.  
+        You will know ....
+
+        *Here add text*  
+        '''
+        '''
+        ---
+        '''
+    with practice_container:
+        '''
+        ### Practice
+        First, from the left panel select the type of the solar panel. 
+        '''
+        '''
+        ---
+        '''
+    with conclusions_container:
+        with st.expander('Modify conclusion'):
+            entered_conclusion = st.text_input('')
+            if st.button('Save'):
+                st.session_state.conclusion = entered_conclusion
+        '''
+        ### Conclusions  
+        '''
+        st.write(st.session_state.conclusion)
+        '''
+        ---
+        '''
+        '''
+        *Here you can make auto-check of your results.*
+        '''
+        if st.button('Check results'):
+            if len(st.session_state.conclusion) < 300:
+                st.write('> Not very informative conclusion!')
+            else:
+                '''> #### Auto tests completed! Seems everything is fine.  
+                '''
+                '''
+                *If you want, you can hide all the expanders above and print the report 
+                with Ctrl+P on Windows or Cmd+P on MacOs*
+                '''
+
 
 if tab_selected == works[4]:
-    introduction_container = st.container()
+    whatnext_container = st.container()
 
-
+    with whatnext_container:
+        '''
+        ### What next?
+        '''
+        '''
+        You can refer to the folowing useful information:  
+          
+        *Here add links* 
+        '''
 

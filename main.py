@@ -86,7 +86,6 @@ def calculate_ivc(I_max: float, U_max: float, Isc: float, Uoc: float, cell_area:
 # ==============================
 # Sidebar
 # ==============================
-st.write('test')
 st.sidebar.image('./Images/logo.png')
 st.sidebar.markdown('***')
 st.sidebar.header('PV cloud model')

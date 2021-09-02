@@ -5,8 +5,11 @@ from scipy.optimize import curve_fit
 from requests.api import head
 import streamlit as st
 import requests
+from bokeh import events
 from bokeh.plotting import figure
-from bokeh.models import CrosshairTool
+from bokeh.models import CrosshairTool, CustomJS
+from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
+from math import radians, log, tan, pi
 
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
 
@@ -32,10 +35,16 @@ if 'current_panel' not in st.session_state:
                                         'tC':None,
                                         'Unom':None,
                                         'Inom':None,
-                                        'Pnom':None,
+                                        'Pnom':None
                                         }
 if 'conclusion' not in st.session_state:
     st.session_state.conclusion = ''
+if 'coordinates' not in st.session_state:
+    st.session_state.coordinates = {'lon':None,
+                                    'lat':None,
+                                    'x_Merc':None,
+                                    'y_Merc':None
+                                    }
 # ==============================
 
 API_URL = 'http://178.154.215.108/solar/panels'
@@ -83,6 +92,16 @@ def calculate_ivc(I_max: float, U_max: float, Isc: float, Uoc: float, cell_area:
     Pnom = Inom * Unom
     
     return [Unom, Inom, Pnom]
+
+# function to convert Mercator to lon lat https://wiki.gis-lab.info/w/Пересчет_координат_из_Lat/Long_в_проекцию_Меркатора_и_обратно
+def LatLongToMerc(lon, lat): 
+    rLat = radians(lat)
+    rLong = radians(lon)
+    a=6378137.0
+    x=a*rLong
+    y=a*log(tan(pi/4+rLat/2))
+    return [x,y]
+
 # ==============================
 # Sidebar
 # ==============================
@@ -356,6 +375,7 @@ if tab_selected == works[1]:
                 '''
 
 if tab_selected == works[2]:
+
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -369,7 +389,9 @@ if tab_selected == works[2]:
     
         *Here add text*  
         '''
-        
+        '''
+        ---
+        '''
     with work_description_container:
         '''
         ### The aim of the work
@@ -386,10 +408,38 @@ if tab_selected == works[2]:
     with practice_container:
         '''
         ### Practice
-        First, from the left panel select the type of the solar panel.  
-        After enter or choose coordinate on map.  
-        Push the button..
+        First, choose coordinates on map and enter them in the fields above the map.  
+        Push the button to set up the chosen position.
         '''
+
+        col1, col2 = st.columns(2)
+        with col1:
+            lon_inp = st.number_input('Longitude', min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+        with col2:
+            lat_inp = st.number_input('Latitude', min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+
+
+        if st.button('Set position'):
+            st.session_state.coordinates['lon'] = lon_inp
+            st.session_state.coordinates['lat'] = lat_inp
+            [st.session_state.coordinates['x_Merc'], st.session_state.coordinates['y_Merc']] = LatLongToMerc(lon_inp, lat_inp)   
+
+        tile_provider = get_provider(CARTODBPOSITRON_RETINA)
+        # range bounds supplied in web mercator coordinates
+        p = figure(x_range=(-1000000, 7000000), y_range=(3000000, 11000000),
+                    x_axis_type="mercator", y_axis_type="mercator")
+        p.add_tile(tile_provider)
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="cross", size=35, color='red')
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=10, alpha=0.3, color='red')
+        p.add_tools(CrosshairTool())
+        # add here callback event https://docs.bokeh.org/en/latest/docs/user_guide/interaction/callbacks.html
+        # p.js_on_event(events.DoubleTap, callback)
+        st.bokeh_chart(p, use_container_width=True)  
+
+        tilt_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        if st.sidebar.button('Calculate'):
+            pass
         '''
         ---
         '''

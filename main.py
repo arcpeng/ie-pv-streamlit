@@ -7,9 +7,10 @@ import streamlit as st
 import requests
 from bokeh import events
 from bokeh.plotting import figure
-from bokeh.models import CrosshairTool, CustomJS
+from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet
 from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
-from math import radians, log, tan, pi
+
+from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
 
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
 
@@ -24,19 +25,20 @@ if 'journal' not in st.session_state:
                                                     'U nominal, V',
                                                     'Fill factor, %',
                                                     'Efficiency, %'])
+empty_panel = { # spec parameters
+                'label':None,
+                'I_max':None, 'U_max':None, 'Isc':None, 'Uoc':None,
+                'cell_area':None, 'cell_count':None,
+                'tC':None,
+                # calculated parameters
+                'IVC':{
+                    'nom':{'I':None, 'U':None, 'P':None},
+                    'month':{}                                        },
+                'Efficiency': None,
+                'E_month': {}
+                }
 if 'current_panel' not in st.session_state:
-    st.session_state.current_panel = {'label':None,
-                                        'I_max':None,
-                                        'U_max':None,
-                                        'Isc':None,
-                                        'Uoc':None,
-                                        'cell_area':None,
-                                        'cell_count':None,
-                                        'tC':None,
-                                        'Unom':None,
-                                        'Inom':None,
-                                        'Pnom':None
-                                        }
+    st.session_state.current_panel = empty_panel
 if 'conclusion' not in st.session_state:
     st.session_state.conclusion = ''
 if 'coordinates' not in st.session_state:
@@ -56,51 +58,18 @@ for panel in all_panels:
     pv_list.append(panel['label'])
 
 def get_ivc(panel_label):
+    result = empty_panel
     for panel in all_panels:
         if panel['label']==panel_label:
-            result = requests.get(panel['url'])
-            return result.json()
+            req = requests.get(panel['url']).json()
+            result.update(req)
+            return result
 
 works = ['Introduction', 
         'Work #1: Understanding IVC', 
         'Work #2: Simulating geographics', 
         'Work #3: The third work',
         'Futher investigation']
-
-def calculate_ivc(I_max: float, U_max: float, Isc: float, Uoc: float, cell_area: float, cell_count: int):
-    I_max = I_max/cell_area
-    U_max = U_max/cell_count
-    Isc = Isc/cell_area
-    Uoc = Uoc/cell_count
-
-    k = 1.38*(10**(-23))
-    T = 300.15
-    q = 1.6*(10**(-19))    
-    def fit_func(U, n, I_0, Rsh):
-        return Isc - I_0*np.exp((q*U)/(n*k*T)) - U/Rsh
-    
-    popt, pcov = curve_fit(fit_func, 
-                        [ 0, U_max, Uoc ],
-                        [ Isc, I_max, 0 ],
-                        #p0 = [0.8, 0.000001, 1],
-                        method = 'lm',
-                        #bounds = ([0.1,10**(-9), 0.00000001], [0.9,10**(-6),2])
-                        )
-
-    Unom = np.linspace(0, Uoc, 100)
-    Inom = fit_func(Unom, *popt)
-    Pnom = Inom * Unom
-    
-    return [Unom, Inom, Pnom]
-
-# function to convert Mercator to lon lat https://wiki.gis-lab.info/w/Пересчет_координат_из_Lat/Long_в_проекцию_Меркатора_и_обратно
-def LatLongToMerc(lon, lat): 
-    rLat = radians(lat)
-    rLong = radians(lon)
-    a=6378137.0
-    x=a*rLong
-    y=a*log(tan(pi/4+rLat/2))
-    return [x,y]
 
 # ==============================
 # Sidebar
@@ -127,7 +96,7 @@ for item in works:
             '''***'''
 
 if tab_selected == works[0]:
-
+    
     introduction_container = st.container()
     scheme_container = st.container()
     basics_container = st.container()
@@ -215,7 +184,7 @@ if tab_selected == works[0]:
         '''
 
 if tab_selected == works[1]:
-
+    
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -269,31 +238,31 @@ if tab_selected == works[1]:
 
         if st.sidebar.button('Calculate'):
             st.session_state.current_panel = get_ivc(selected_panel)
-            [st.session_state.current_panel['Unom'], 
-            st.session_state.current_panel['Inom'], 
-            st.session_state.current_panel['Pnom']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
+            [st.session_state.current_panel['IVC']['nom']['U'], 
+            st.session_state.current_panel['IVC']['nom']['I'], 
+            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
                                             U_max=st.session_state.current_panel['U_max'], 
                                             Isc=st.session_state.current_panel['Isc'],
                                             Uoc=st.session_state.current_panel['Uoc'], 
                                             cell_area=st.session_state.current_panel['cell_area'],
                                             cell_count=st.session_state.current_panel['cell_count']
                                             )
-            st.session_state.current_panel['Inom'] *= st.session_state.current_panel['cell_area']
-            st.session_state.current_panel['Unom'] *= st.session_state.current_panel['cell_count']
-            st.session_state.current_panel['Pnom'] = st.session_state.current_panel['Inom']*st.session_state.current_panel['Unom']
+            st.session_state.current_panel['IVC']['nom']['I'] *= st.session_state.current_panel['cell_area']
+            st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
+            st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
         '**Selected panel: **', st.session_state.current_panel['label']
         '**Number of cells in the solar module: **', st.session_state.current_panel['cell_count']
         '**The area of one cell in the solar module: **', st.session_state.current_panel['cell_area']
         p = figure(title = "I-V curve", plot_height=300, 
                     x_axis_label='Voltage (U), V ', y_axis_label='Current (I), A')
-        p.line(st.session_state.current_panel['Unom'], st.session_state.current_panel['Inom'], line_width=2)
+        p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
         p.add_tools(CrosshairTool())
         st.bokeh_chart(p, use_container_width=True)
 
         p2 = figure(title = "P-V curve", plot_height=300, 
                     x_axis_label='Voltage (U), V ', y_axis_label='Power (P), W')
-        p2.line(st.session_state.current_panel['Unom'], st.session_state.current_panel['Pnom'], line_width=2)
+        p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], line_width=2)
         p2.add_tools(CrosshairTool())
         st.bokeh_chart(p2, use_container_width=True)
 
@@ -375,7 +344,7 @@ if tab_selected == works[1]:
                 '''
 
 if tab_selected == works[2]:
-
+    st.session_state.current_panel = empty_panel
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -437,9 +406,85 @@ if tab_selected == works[2]:
         # p.js_on_event(events.DoubleTap, callback)
         st.bokeh_chart(p, use_container_width=True)  
 
-        tilt_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        input_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        
         if st.sidebar.button('Calculate'):
-            pass
+            st.session_state.current_panel = get_ivc(selected_panel)
+            [st.session_state.current_panel['IVC']['nom']['U'], 
+            st.session_state.current_panel['IVC']['nom']['I'], 
+            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
+                                            U_max=st.session_state.current_panel['U_max'], 
+                                            Isc=st.session_state.current_panel['Isc'],
+                                            Uoc=st.session_state.current_panel['Uoc'], 
+                                            cell_area=st.session_state.current_panel['cell_area'],
+                                            cell_count=st.session_state.current_panel['cell_count']
+                                            )
+            st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
+        
+            new_panel = calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 
+                                        input_lat=st.session_state.coordinates['lat'], 
+                                        input_ang=input_ang,
+                                        Inom=st.session_state.current_panel['IVC']['nom']['I'], 
+                                        Unom=st.session_state.current_panel['IVC']['nom']['U']
+                                        )
+            st.session_state.current_panel.update(new_panel)
+    
+        '**Selected panel: **', st.session_state.current_panel['label']
+        p = figure(title = "I-V curve", plot_height=400, 
+                    x_axis_label='Voltage (U), V ', y_axis_label='Current (I), A')
+        p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
+        for key, value in st.session_state.current_panel['IVC']['month'].items():
+            p.line(value['U'], value['I'])
+        p.add_tools(CrosshairTool())
+        st.bokeh_chart(p, use_container_width=True)
+
+        p2 = figure(title = "P-V curve", plot_height=400, 
+                    x_axis_label='Voltage (U), V ', y_axis_label='Power (P), W')
+        p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], line_width=2)
+        for key, value in st.session_state.current_panel['IVC']['month'].items():
+            p2.line(value['U'], value['P'])
+        p2.add_tools(CrosshairTool())
+        st.bokeh_chart(p2, use_container_width=True)
+        
+        st.write(st.session_state.current_panel)
+        p3 = figure(title = "Month energy", plot_height=400,
+                    x_axis_label='month ', y_axis_label='Avg energy')
+        E_max = []; E_avg = []; months = []
+        for key, value in st.session_state.current_panel['E_month'].items():
+            E_max.append(value['E_max'])
+            E_avg.append(value['E'])
+            months.append(key)
+        data = {'months' : months,
+                'E_max' : E_max,
+                'E_avg' : E_avg
+                }
+        colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+        p3.vbar_stack(['E_max', 'E_avg'], x='months', width=0.9, color=colors, source=data)
+
+
+
+
+        # source_1 = ColumnDataSource(dict(x=months,y=E_avg))
+        # st.write(source_1)
+        # # p3.vbar(source=source_1, x='x', top='y')
+        # # p3.vbar(x=months, top=E_avg)
+        # # p3.vbar(x=['Jan','Feb','Mar'], top=[3,2,1])
+        # source = ColumnDataSource(dict(x=months, y1=E_max, y2=E_avg))
+        # p3 = figure(plot_height=400,
+        #             x_axis_label = " ",
+        #             y_axis_label = "test",
+        #             title= "test",
+        #             x_minor_ticks=2,
+        #             x_range = source.data["x"])
+        
+        # labels = LabelSet(x='x', y='y', text='y', level='glyph',
+        #                     x_offset=-13.5, y_offset=0, 
+        #                     source=source, render_mode='canvas')
+        # p3.vbar_stack(x='x',top=['y1','y2'], color=("grey", "lightgrey"), source=source)
+        # p3.add_layout(labels)
+        p3.add_tools(CrosshairTool())
+        st.bokeh_chart(p3, use_container_width=True)
+
         '''
         ---
         '''

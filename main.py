@@ -460,9 +460,6 @@ if tab_selected == works[2]:
         colors = ["#c9d9d3", "#718dbf", "#e84d60"]
         p3.vbar_stack(['E_max', 'E_avg'], x='months', width=0.9, color=colors, source=data)
 
-
-
-
         # source_1 = ColumnDataSource(dict(x=months,y=E_avg))
         # st.write(source_1)
         # # p3.vbar(source=source_1, x='x', top='y')
@@ -481,7 +478,7 @@ if tab_selected == works[2]:
         #                     source=source, render_mode='canvas')
         # p3.vbar_stack(x='x',top=['y1','y2'], color=("grey", "lightgrey"), source=source)
         # p3.add_layout(labels)
-        p3.add_tools(CrosshairTool())
+        # p3.add_tools(CrosshairTool())
         st.bokeh_chart(p3, use_container_width=True)
 
         '''

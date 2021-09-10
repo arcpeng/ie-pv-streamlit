@@ -42,10 +42,10 @@ if 'current_panel' not in st.session_state:
 if 'conclusion' not in st.session_state:
     st.session_state.conclusion = ''
 if 'coordinates' not in st.session_state:
-    st.session_state.coordinates = {'lon':None,
-                                    'lat':None,
-                                    'x_Merc':None,
-                                    'y_Merc':None
+    st.session_state.coordinates = {'lon':0.00,
+                                    'lat':0.00,
+                                    'x_Merc':0.00,
+                                    'y_Merc':0.00
                                     }
 # ==============================
 

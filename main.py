@@ -394,7 +394,8 @@ if tab_selected == works[2]:
 
         tile_provider = get_provider(CARTODBPOSITRON_RETINA)
         # range bounds supplied in web mercator coordinates
-        p = figure(x_range=(-1000000, 7000000), y_range=(3000000, 11000000),
+        p = figure(x_range=(st.session_state.coordinates['x_Merc']-7000000, st.session_state.coordinates['x_Merc']+7000000), 
+                    y_range=(st.session_state.coordinates['y_Merc']-7000000, st.session_state.coordinates['y_Merc']+7000000),
                     x_axis_type="mercator", y_axis_type="mercator")
         p.add_tile(tile_provider)
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
@@ -445,40 +446,24 @@ if tab_selected == works[2]:
         p2.add_tools(CrosshairTool())
         st.bokeh_chart(p2, use_container_width=True)
         
-        st.write(st.session_state.current_panel)
-        p3 = figure(title = "Month energy", plot_height=400,
-                    x_axis_label='month ', y_axis_label='Avg energy')
-        E_max = []; E_avg = []; months = []
+        E_max = []; E_avg = []; months = {}; x = []; i=1
         for key, value in st.session_state.current_panel['E_month'].items():
             E_max.append(value['E_max'])
             E_avg.append(value['E'])
-            months.append(key)
-        data = {'months' : months,
-                'E_max' : E_max,
-                'E_avg' : E_avg
-                }
-        colors = ["#c9d9d3", "#718dbf", "#e84d60"]
-        p3.vbar_stack(['E_max', 'E_avg'], x='months', width=0.9, color=colors, source=data)
+            months[i]=key
+            x.append(i); i+=1
+        source = ColumnDataSource(data=dict(
+                                    x=x,
+                                    y1=E_max,
+                                    y2=E_avg
+                                    ))
+        p3 = figure(title = "Month energy", plot_height=400, x_axis_label='month ', 
+                        y_axis_label='Avg energy')
 
-        # source_1 = ColumnDataSource(dict(x=months,y=E_avg))
-        # st.write(source_1)
-        # # p3.vbar(source=source_1, x='x', top='y')
-        # # p3.vbar(x=months, top=E_avg)
-        # # p3.vbar(x=['Jan','Feb','Mar'], top=[3,2,1])
-        # source = ColumnDataSource(dict(x=months, y1=E_max, y2=E_avg))
-        # p3 = figure(plot_height=400,
-        #             x_axis_label = " ",
-        #             y_axis_label = "test",
-        #             title= "test",
-        #             x_minor_ticks=2,
-        #             x_range = source.data["x"])
-        
-        # labels = LabelSet(x='x', y='y', text='y', level='glyph',
-        #                     x_offset=-13.5, y_offset=0, 
-        #                     source=source, render_mode='canvas')
-        # p3.vbar_stack(x='x',top=['y1','y2'], color=("grey", "lightgrey"), source=source)
-        # p3.add_layout(labels)
-        # p3.add_tools(CrosshairTool())
+        p3.vbar_stack(['y1', 'y2'], x='x', width= 0.9, color=("grey", "lightgrey"), source=source)
+        p3.xaxis.ticker = x
+        p3.xaxis.major_label_overrides = months
+        p3.add_tools(CrosshairTool())
         st.bokeh_chart(p3, use_container_width=True)
 
         '''

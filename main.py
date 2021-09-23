@@ -9,6 +9,7 @@ from bokeh import events
 from bokeh.plotting import figure
 from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet
 from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
+from panels import panels
 
 from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
 
@@ -49,9 +50,13 @@ if 'coordinates' not in st.session_state:
                                     }
 # ==============================
 
-API_URL = 'http://178.154.215.108/solar/panels'
+local_label = 'local'           #'local' or 'web' in case of using server with api
 
-all_panels = requests.get(API_URL).json()
+if local_label == 'web':
+    API_URL = 'http://178.154.215.108/solar/panels'
+    all_panels = requests.get(API_URL).json()
+elif local_label == 'local':
+    all_panels = panels
 
 pv_list = []
 for panel in all_panels:
@@ -59,11 +64,20 @@ for panel in all_panels:
 
 def get_ivc(panel_label):
     result = empty_panel
-    for panel in all_panels:
-        if panel['label']==panel_label:
-            req = requests.get(panel['url']).json()
-            result.update(req)
-            return result
+    if local_label == 'web':
+        for panel in all_panels:
+            if panel['label']==panel_label:
+                req = requests.get(panel['url']).json()
+                result.update(req)
+                print(result)
+                return result
+    if local_label == 'local':
+        for panel in all_panels:
+            if panel['label']==panel_label:
+                req = panel["prop"]
+                result.update(req)
+                print(result)
+                return result
 
 works = ['Introduction', 
         'Work #1: Understanding IVC', 

@@ -460,20 +460,25 @@ if tab_selected == works[2]:
         p2.add_tools(CrosshairTool())
         st.bokeh_chart(p2, use_container_width=True)
         
-        st.write(st.session_state.current_panel)
-        p3 = figure(title = "Month energy", plot_height=400,
-                    x_axis_label='month ', y_axis_label='Avg energy')
-        E_max = []; E_avg = []; months = []
+        E_max = []; E_avg = []; months = {}; x = []; i=1
         for key, value in st.session_state.current_panel['E_month'].items():
             E_max.append(value['E_max'])
             E_avg.append(value['E'])
-            months.append(key)
-        data = {'months' : months,
-                'E_max' : E_max,
-                'E_avg' : E_avg
-                }
-        colors = ["#c9d9d3", "#718dbf", "#e84d60"]
-        p3.vbar_stack(['E_max', 'E_avg'], x='months', width=0.9, color=colors, source=data)
+            months[i]=key
+            x.append(i); i+=1
+        source = ColumnDataSource(data=dict(
+                                    x=x,
+                                    y1=E_max,
+                                    y2=E_avg
+                                    ))
+        p3 = figure(title = "Month energy", plot_height=400, x_axis_label='month ', 
+                        y_axis_label='Avg energy')
+
+        p3.vbar_stack(['y1', 'y2'], x='x', width= 0.9, color=("grey", "lightgrey"), source=source)
+        p3.xaxis.ticker = x
+        p3.xaxis.major_label_overrides = months
+        p3.add_tools(CrosshairTool())
+        st.bokeh_chart(p3, use_container_width=True)
 
 
 

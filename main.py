@@ -533,8 +533,8 @@ if tab_selected == works[2]:
                 with Ctrl+P on Windows or Cmd+P on MacOs*
                 '''
 
-
 if tab_selected == works[3]:
+    st.session_state.current_panel = empty_panel
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -544,14 +544,13 @@ if tab_selected == works[3]:
         '''
         ### Introduction & theoretical background  
         The work of solar panels depends not only on its type, but also on the surrounding
-        environment....
+        environment and temperature....
     
         *Here add text*  
         '''
         '''
         ---
         '''
-        
     with work_description_container:
         '''
         ### The aim of the work
@@ -572,6 +571,34 @@ if tab_selected == works[3]:
         '''
         ---
         '''
+
+        col1, col2 = st.columns(2)
+        with col1:
+            lon_inp = st.number_input('Longitude', min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+        with col2:
+            lat_inp = st.number_input('Latitude', min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+
+
+        if st.button('Set position'):
+            st.session_state.coordinates['lon'] = lon_inp
+            st.session_state.coordinates['lat'] = lat_inp
+            [st.session_state.coordinates['x_Merc'], st.session_state.coordinates['y_Merc']] = LatLongToMerc(lon_inp, lat_inp)   
+
+        tile_provider = get_provider(CARTODBPOSITRON_RETINA)
+        # range bounds supplied in web mercator coordinates
+        p = figure(x_range=(-1000000, 7000000), y_range=(3000000, 11000000),
+                    x_axis_type="mercator", y_axis_type="mercator")
+        p.add_tile(tile_provider)
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="cross", size=35, color='red')
+        p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=10, alpha=0.3, color='red')
+        p.add_tools(CrosshairTool())
+        # add here callback event https://docs.bokeh.org/en/latest/docs/user_guide/interaction/callbacks.html
+        # p.js_on_event(events.DoubleTap, callback)
+        st.bokeh_chart(p, use_container_width=True)  
+
+        
+
     with conclusions_container:
         with st.expander('Modify conclusion'):
             entered_conclusion = st.text_input('')

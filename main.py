@@ -40,13 +40,19 @@ empty_panel = { # spec parameters
                 }
 if 'current_panel' not in st.session_state:
     st.session_state.current_panel = empty_panel
+if 'comparison_panel' not in st.session_state:
+    st.session_state.comparison_panel = empty_panel
 if 'conclusion' not in st.session_state:
     st.session_state.conclusion = ''
 if 'coordinates' not in st.session_state:
-    st.session_state.coordinates = {'lon':None,
-                                    'lat':None,
-                                    'x_Merc':None,
-                                    'y_Merc':None
+    st.session_state.coordinates = {'lon':0.00,
+                                    'lat':0.00,
+                                    'x_Merc':0.00,
+                                    'y_Merc':0.00
+                                    }
+if 'temperature' not in st.session_state:
+    st.session_state.temperature = {
+
                                     }
 # ==============================
 
@@ -440,7 +446,8 @@ if tab_selected == works[2]:
                                         input_lat=st.session_state.coordinates['lat'], 
                                         input_ang=input_ang,
                                         Inom=st.session_state.current_panel['IVC']['nom']['I'], 
-                                        Unom=st.session_state.current_panel['IVC']['nom']['U']
+                                        Unom=st.session_state.current_panel['IVC']['nom']['U'],
+                                        tC = 0
                                         )
             st.session_state.current_panel.update(new_panel)
     
@@ -563,7 +570,8 @@ if tab_selected == works[3]:
 
         tile_provider = get_provider(CARTODBPOSITRON_RETINA)
         # range bounds supplied in web mercator coordinates
-        p = figure(x_range=(-1000000, 7000000), y_range=(3000000, 11000000),
+        p = figure(x_range=(st.session_state.coordinates['x_Merc']-7000000, st.session_state.coordinates['x_Merc']+7000000), 
+                    y_range=(st.session_state.coordinates['y_Merc']-7000000, st.session_state.coordinates['y_Merc']+7000000),
                     x_axis_type="mercator", y_axis_type="mercator")
         p.add_tile(tile_provider)
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
@@ -574,6 +582,60 @@ if tab_selected == works[3]:
         # p.js_on_event(events.DoubleTap, callback)
         st.bokeh_chart(p, use_container_width=True)  
 
+        input_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        
+        if st.sidebar.button('Calculate'):
+            st.session_state.current_panel = get_ivc(selected_panel)
+            [st.session_state.current_panel['IVC']['nom']['U'], 
+            st.session_state.current_panel['IVC']['nom']['I'], 
+            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
+                                            U_max=st.session_state.current_panel['U_max'], 
+                                            Isc=st.session_state.current_panel['Isc'],
+                                            Uoc=st.session_state.current_panel['Uoc'], 
+                                            cell_area=st.session_state.current_panel['cell_area'],
+                                            cell_count=st.session_state.current_panel['cell_count']
+                                            )
+            st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
+        
+            new_panel = calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 
+                                        input_lat=st.session_state.coordinates['lat'], 
+                                        input_ang=input_ang,
+                                        Inom=st.session_state.current_panel['IVC']['nom']['I'], 
+                                        Unom=st.session_state.current_panel['IVC']['nom']['U'],
+                                        tC = st.session_state.current_panel['tC']
+                                        )
+            st.session_state.current_panel.update(new_panel)
+            
+            comparison_panel = st.session_state.current_panel
+            comparison_panel.update(calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 
+                                        input_lat=st.session_state.coordinates['lat'], 
+                                        input_ang=input_ang,
+                                        Inom=st.session_state.current_panel['IVC']['nom']['I'], 
+                                        Unom=st.session_state.current_panel['IVC']['nom']['U'],
+                                        tC = 0
+                                        ))           
+
+        '**Selected panel: **', st.session_state.current_panel['label']
+
+        E_max = []; E_avg = []; months = {}; x = []; i=1
+        for key, value in st.session_state.current_panel['E_month'].items():
+            E_max.append(value['E_max'])
+            E_avg.append(value['E'])
+            months[i]=key
+            x.append(i); i+=1
+        source = ColumnDataSource(data=dict(
+                                    x=x,
+                                    y1=E_max,
+                                    y2=E_avg
+                                    ))
+        p3 = figure(title = "Month energy", plot_height=400, x_axis_label='month ', 
+                        y_axis_label='Avg energy')
+
+        p3.vbar_stack(['y1', 'y2'], x='x', width= 0.9, color=("grey", "lightgrey"), source=source)
+        p3.xaxis.ticker = x
+        p3.xaxis.major_label_overrides = months
+        p3.add_tools(CrosshairTool())
+        st.bokeh_chart(p3, use_container_width=True)
         
 
     with conclusions_container:

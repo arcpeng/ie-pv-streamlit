@@ -1,18 +1,18 @@
 panels = [
-        {
-            "id": "1",
-            "label": "FSM30M", 
-            "prop": {
-                    "label": "FSM30M",
-                    "I_max": 1.71,
-                    "U_max": 17.6,
-                    "Isc": 1.83,
-                    "Uoc": 22.6,
-                    "cell_area": 0.00483,
-                    "cell_count": 36,
-                    "tC": 1.0
-            }
-        },
+        # {
+        #     "id": "1",
+        #     "label": "FSM30M", 
+        #     "prop": {
+        #             "label": "FSM30M",
+        #             "I_max": 1.71,
+        #             "U_max": 17.6,
+        #             "Isc": 1.83,
+        #             "Uoc": 22.6,
+        #             "cell_area": 0.00483,
+        #             "cell_count": 36,
+        #             "tC": 1.0
+        #     }
+        # },
         {
             "id": "3", 
             "label": "Monocrystal", 

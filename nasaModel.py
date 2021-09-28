@@ -6,7 +6,7 @@ from typing import Sequence
 from scipy.optimize import curve_fit
 import numpy as np
 
-months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 daysAmount = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 def sendNasaRequest(lon, lat):
@@ -14,7 +14,7 @@ def sendNasaRequest(lon, lat):
             "start=2000&end=2005&" +\
             "latitude={lat}&longitude={lon}" +\
             "&community=re&" +\
-            "parameters=SI_EF_TILTED_SURFACE%2CALLSKY_SFC_SW_DWN%2CALLSKY_SFC_SW_DIFF%2CALLSKY_SRF_ALB&" +\
+            "parameters=SI_EF_TILTED_SURFACE%2CALLSKY_SFC_SW_DWN%2CALLSKY_SFC_SW_DIFF%2CALLSKY_SRF_ALB%2CT2M&" +\
             "format=json&header=false"
 
     url = apiUrl.format(lat=lat, lon=lon)
@@ -29,12 +29,14 @@ def sendNasaRequest(lon, lat):
     surfAlbedo = list(nasaData['ALLSKY_SRF_ALB'].values())
     optSolIrradiance = list(nasaData['SI_EF_TILTED_SURFACE_OPTIMAL'].values())
     optSolAngle = list(nasaData['SI_EF_TILTED_SURFACE_OPTIMAL_ANG'].values())
+    avgTemp = list(nasaData['T2M'].values())
 
     return {'SI_EF_OPTIMAL' : optSolIrradiance,                         # Solar Irradiance Optimal, kW-hr/m^2/day, 12 months + annual avg
             'SI_EF_OPTIMAL_ANG' : optSolAngle,                          # Solar Irradiance Optimal Angle, Degrees, 12 months + annual avg
             'ALLSKY_SFC_SW_DWN' : insolationIncident,                   # All Sky Insolation Incident on a Horizontal Surface, kW-hr/m^2/day, 12 months + annual avg
             'DIFF' : diffuseRadiation,                                  # Diffuse Radiation On A Horizontal Surface, kW-hr/m^2/day, 12 months + annual avg
-            'SRF_ALB' : surfAlbedo                                      # Surface Albedo, dimensionless, 12 months + annual avg
+            'SRF_ALB' : surfAlbedo,                                     # Surface Albedo, dimensionless, 12 months + annual avg
+            'AVG_TEMP' : avgTemp
             }
 
 
@@ -161,7 +163,7 @@ def calculateTiltIrr(input_lon, input_lat, input_ang, **kwargs):
 
 
 def calculate_month_ivc(input_lon: float, input_lat: float, input_ang: float,
-              Inom: Sequence[float], Unom: Sequence[float], tC = -0.001, **kwargs):
+              Inom: Sequence[float], Unom: Sequence[float], tC : float, **kwargs):
 
     Pnom = [Inom[i]*Unom[i] for i in list(range(len(Unom)))]
     mpi = Pnom.index(max(Pnom))
@@ -193,8 +195,8 @@ def calculate_month_ivc(input_lon: float, input_lat: float, input_ang: float,
     # calculated energy per day achievable from this panel for the input_ang
 
     optAngMonthList = nasaData['SI_EF_OPTIMAL_ANG'][:12]                        #degrees
-    maxMonthEnergy = [i * Efficiency for i in optIrrMonthList]           #Wh/m2/day
-    calcMonthEnergy = [i * Efficiency for i in calcIrrMontList]          #Wh/m2/day
+    maxMonthEnergy = [i * Efficiency * (1 + tC/100 * (nasaData['AVG_TEMP'][i] - 20)) for i in optIrrMonthList]                  #Wh/m2/day
+    calcMonthEnergy = [i * Efficiency * (1 + tC/100 * (nasaData['AVG_TEMP'][i] - 20)) for i in calcIrrMontList]                 #Wh/m2/day
 
     dayLength = [(12 - (24/math.pi) * 
                         math.asin(math.tan(math.radians(input_lat)) * 0.4348 * 
@@ -208,7 +210,7 @@ def calculate_month_ivc(input_lon: float, input_lat: float, input_ang: float,
 
         i_month = [i - coeff for i in Inom if i - coeff >= 0]
         u_month = Unom[:(len(i_month))]
-        p_month = [i_month[i] * u_month[i] for i in range(len(i_month))]
+        p_month = [i_month[i] * u_month[i] * (1 + tC/100 * (nasaData['AVG_TEMP'][ind] - 20)) for i in range(len(i_month))]
         panel['IVC']['month'][month] = {'I': i_month, 'U': u_month, 'P': p_month}
 
     panel['E_month'] = {}

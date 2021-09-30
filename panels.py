@@ -15,9 +15,9 @@ panels = [
         # },
         {
             "id": "3", 
-            "label": "Monocrystal", 
+            "label": "Монокристаллическая", 
             "prop": {
-                    "label": "Monocrystal",
+                    "label": "Монокристаллическая",
                     "I_max": 5.6,
                     "U_max": 17.8,
                     "Isc": 6.0,
@@ -29,9 +29,9 @@ panels = [
         },
         {
             "id": "4", 
-            "label": "Polycrystal", 
+            "label": "Поликристаллическая", 
             "prop": {
-                    "label": "Polycrystal",
+                    "label": "Поликристаллическая",
                     "I_max": 1.67,
                     "U_max": 18.0,
                     "Isc": 1.77,
@@ -43,9 +43,9 @@ panels = [
         },
         {
             "id": "5", 
-            "label": "Organic polymer", 
+            "label": "Полностью полимерная", 
             "prop": {
-                    "label": "Organic polymer",
+                    "label": "Полностью полимерная",
                     "I_max": 0.01,
                     "U_max": 0.495,
                     "Isc": 0.0126,

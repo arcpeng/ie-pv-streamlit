@@ -147,6 +147,8 @@ if tab_selected == works[0]:
         в виде осадков или замерзая в ледниках. Потоки воды образуют реки, а человек 
         снова извлекает из этого пользу, используя гидроэлектростанции.
         '''
+        st.markdown('<p style="text-align: center; padding-right:0%; padding-left:0%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage_ru/Images/0_Picture_0.png", width=100%/></p>', 
+            unsafe_allow_html=True)
         '''
         С конца **XIX века**, когда учёные открыли фотоэлектрический эффект, у 
         человечества появился способ прямого преобразования солнечного света 
@@ -249,37 +251,32 @@ if tab_selected == works[1]:
 
     with introduction_container:
         '''
-        ### Introduction & theoretical background  
-        A **current–voltage characteristic** or **I–V curve** 
-        (current–voltage curve) is a relationship, typically represented 
-        as a chart or graph, between the electric current through a circuit, 
-        device, or material, and the corresponding voltage, or potential 
-        difference across it.  
+        ### Введение и элементы теории  
     
         *Here add text*  
         '''
-        with st.expander('Monocrystal solar panel'):
+        with st.expander('Монокристаллическая солнечная панель'):
             '''
-            *Here add text about different types of solar panels* 
+            *Here add text* 
             '''
-        with st.expander('Polycrystal solar panel'):
+        with st.expander('Поликристаллическая солнечная панель'):
             '''
-            *Here add text about different types of solar panels* 
+            *Here add text*  
             '''
-        with st.expander('Organic solar panel'):
+        with st.expander('Органическая солнечная панельl'):
             '''
-            *Here add text about different types of solar panels* 
+            *Here add text*  
             '''
         '''  
         ---
         '''
     with work_description_container:
         '''
-        ### The aim of the work
-        **The aim** of this work is to understand the main basics of the 
-        solar panels **I–V curve**.  
-        You will know the difference between some types of solar 
-        panels and calculate their main characteristics
+        ### Цель работы
+        **Цель** работы заключается в понимании принципа построения 
+        поляризационных или вольт-амперных кривых для солнечных панелей.  
+        В ходе выполнения работы Вы также узнаете про ключевые отличия 
+        различных типов солнечных панелей.
 
         *Here add text*  
           
@@ -287,13 +284,13 @@ if tab_selected == works[1]:
         '''
     with practice_container:
         '''
-        ### Practice
-        First, from the left panel select the type of the solar panel. 
-        After pressing "Calculate" button you will display the key parameters 
-        of the selected panel, its I-V and P-V curves. Just try it! 
+        ### Практическая часть
+        В первую очередь, выберете интересующую солнечную панель слева.  
+        После нажатия на кнопку "Расчет" будут выведены основные параметры 
+        выбранной солнечной панели, зависимость напряжения от тока и мощности от тока. 
         '''
 
-        if st.sidebar.button('Calculate'):
+        if st.sidebar.button('Расчет'):
             st.session_state.current_panel = get_ivc(selected_panel)
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 
@@ -308,38 +305,42 @@ if tab_selected == works[1]:
             st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
-        '**Selected panel: **', st.session_state.current_panel['label']
-        '**Number of cells in the solar module: **', st.session_state.current_panel['cell_count']
-        '**The area of one cell in the solar module: **', st.session_state.current_panel['cell_area']
-        p = figure(title = "I-V curve", plot_height=300, 
-                    x_axis_label='Voltage (U), V ', y_axis_label='Current (I), A')
+        '**Выбранная панель: **', st.session_state.current_panel['label']
+        '**Количество ячеек в солнечной панели: **', st.session_state.current_panel['cell_count']
+        '**Площадь одной ячейки: **', st.session_state.current_panel['cell_area']
+        p = figure(title = "I-V зависимость", plot_height=300, 
+                    x_axis_label='Напряжение (U), В ', y_axis_label='Ток (I), А')
         p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
         p.add_tools(CrosshairTool())
         st.bokeh_chart(p, use_container_width=True)
 
-        p2 = figure(title = "P-V curve", plot_height=300, 
-                    x_axis_label='Voltage (U), V ', y_axis_label='Power (P), W')
+        p2 = figure(title = "P-V зависимость", plot_height=300, 
+                    x_axis_label='Напряжение (U), В ', y_axis_label='Мощность (P), Вт')
         p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], line_width=2)
         p2.add_tools(CrosshairTool())
         st.bokeh_chart(p2, use_container_width=True)
 
         '''
-        From the P-V plot select the point, corresponding to the maximum power of panel (in Watts). 
-        This point shows the maximum possible operation voltage of the panel in Volts. To find the maximum 
-        operation current of the panel, go the the I-V plot and select the point with established 
-        maximum operation voltage and find the correxponding electric current value in Amperes.
-          
-        To calculate the specific Volatge and Current density, you should take into account the 
-        serial electric connection of the cells in one solar panel. Use the number of cells and the area of 
-        one cell, specified above the plots. After this, calclate the fill factor and the efficiency of the selected panel. 
-        For more information check the theory.  
-          
-        Make the same operations with other types of panels and put the results into the table below. 
+        По графику зависимости мощности от напряжения определите точку, соответствующую максимуму
+        рабочей мощности выбранной солнечной панели. Данная точка дает максимум рабочего напряжения в Вольтах.
+        Чтобы найти максимальный рабочий ток для данной панели, на графике зависимости тока от напряжения 
+        необходимо выбрать соответствующую точку.  
+
+        Для рассчета удельного напряжения и плотности тока, необходимо учитывать последовательное соединение
+        ячеек в солнечной панели, а также их площадь (приведено над графиками). После расчета данных параметров можно перейти к определнию величин коэффициента заполнения 
+        вольт-амперной характеристики и эффективности выбранной солнечной панели.  
+        '''
+        '''
+        Для дополнительной информации обратитесь к разделу **"Введение и элементы теории"**
+        '''
+        '''
+        Проведите предложенное исследование для других типов солнечных панелей и введите полученные результаты
+        в таблицу ниже.    
         '''
 
-        with st.expander('Modify table results'):
+        with st.expander('Ввести / изменить результаты'):
             '''
-            ### New result: 
+            ### Добавить новый результат: 
             '''
             col1, col2, col3 = st.columns(3)
             with col1:

@@ -85,23 +85,27 @@ def get_ivc(panel_label):
                 print(result)
                 return result
 
-works = ['Introduction', 
-        'Work #1: Understanding IVC', 
-        'Work #2: Simulating geographics', 
-        'Work #3: The third work',
-        'Futher investigation']
+works = ['Введение', 
+        'Работа №1: Понимание поляризационных кривых', 
+        'Работа №2: Влияние координат', 
+        'Работа №3: Изучение эффекта температуры',
+        'Работа №4: Спектральный эффект',
+        'Рекомендации']
 
 # ==============================
 # Sidebar
 # ==============================
 st.sidebar.image('./Images/logo.png')
 st.sidebar.markdown('***')
-st.sidebar.header('PV cloud model')
-tab_selected = st.sidebar.selectbox('Select the work:', works)
+st.sidebar.markdown('''
+Цифровой стенд  
+**Солнечная энергетика**
+''')
+tab_selected = st.sidebar.selectbox('Выберете работу:', works)
 
 if tab_selected != works[0]:
-    st.sidebar.subheader('Model parameters')
-    selected_panel = st.sidebar.selectbox('Select the solar panel:', pv_list)
+    st.sidebar.subheader('Параметры модели')
+    selected_panel = st.sidebar.selectbox('Выберете солнечную панель:', pv_list)
     
 # ==============================
 # Main page
@@ -124,70 +128,76 @@ if tab_selected == works[0]:
 
     with introduction_container:
         '''
-        ### Photovoltaics (PV)  
-        is the conversion of light into electricity using semiconducting materials 
-        that exhibit the photovoltaic effect, a phenomenon studied in physics, 
-        photochemistry, and electrochemistry. The photovoltaic effect is 
-        commercially utilized for electricity generation and as photosensors. 
-        Some hope that photovoltaic technology will produce enough affordable 
-        sustainable energy to help mitigate global warming caused by CO$_2$. 
-        '''
-        with st.expander('PV advantages and perspectives'):
-            '''
-            Solar PV has specific advantages as an energy source:  
-            - once installed, its operation generates no pollution and no greenhouse 
-            gas emissions;  
-            - it shows simple scalability in respect of power needs and material demands.
-              
-            Other major constraints 
-            identified are competition for land use and lack of labor in making 
-            funding applications. The use of PV as a main source requires energy 
-            storage systems or global distribution by high-voltage direct current 
-            power lines causing additional costs, and also has a number of other 
-            specific disadvantages such as unstable power generation and the 
-            requirement for power companies to compensate for too much solar 
-            power in the supply mix by having more reliable conventional power 
-            supplies in order to regulate demand peaks and potential undersupply. 
-            Production and installation does cause pollution and greenhouse gas 
-            emissions and there are no viable systems for recycling the panels 
-            once they are at the end of their lifespan after 10 to 30 years.
-            '''
-            '''
-            Photovoltaic systems have long been used in specialized applications 
-            as stand-alone installations and grid-connected PV systems have been 
-            in use since the 1990s.[2] Photovoltaic modules were first mass-produced 
-            in 2000, when German environmentalists and the Eurosolar organization 
-            received government funding for a ten thousand roof program.[3]
-            Decreasing costs has allowed PV to grow as an energy source. This has 
-            been partially driven by massive Chinese government investment in developing 
-            solar production capacity since 2000, and achieving economies of scale. Much 
-            of the price of production is from the key component polysilicon, and most of 
-            the world supply is produced in China, especially in Xinjiang. Beside the 
-            subsidies, the low prices of solar panels in the 2010s has been achieved through 
-            the low price of energy from coal and cheap labour costs in Xinjiang,[4] as well 
-            as improvements in manufacturing technology and efficiency.[5][6] Advances in 
-            technology and increased manufacturing scale have also increased the efficiency 
-            of photovoltaic installations.[2][7] Net metering and financial incentives, such 
-            as preferential feed-in tariffs for solar-generated electricity, have supported 
-            solar PV installations in many countries.[8] Panel prices dropped by a factor of 
-            4 between 2004 and 2011. Module prices dropped 90% of over the 2010s, but began 
-            increasing sharply in 2021.[4][9]
-            In 2019, worldwide installed PV capacity increased to more than 635 gigawatts (GW) 
-            covering approximately two percent of global electricity demand.[10] After hydro 
-            and wind powers, PV is the third renewable energy source in terms of global 
-            capacity. In 2019 the International Energy Agency expected a growth by 700 - 880 
-            GW from 2019 to 2024.[11] In some instances, PV has offered the cheapest source 
-            of electrical power in regions with a high solar potential, with a bid for pricing 
-            as low as 0.01567 US$/kWh in Qatar in 2020.[12]
-
+        Первыми живыми организмами на земле, которые научились напрямую 
+        поглощать солнечную энергию и накапливать ее, были, скорее всего, 
+        растения. Энергию, которую переносит солнечный свет от единственной 
+        звезды нашей системы — Солнца, растения используют при фотосинтезе, 
+        улавливая углекислый газ из атмосферы и возвращая в нее кислород. 
+        Углерод при этом остается в растении, формирую его *«зеленую массу»*. 
+        Но солнечная энергия преобразуется не только в энергию химических 
+        связей в растениях. Практически вся энергия на нашей планете так или 
+        иначе связана с солнечной активностью, и человек научился преобразовывать 
+        её в электрическую.  
         '''
         '''
-        A photovoltaic system employs solar modules, each comprising a number of 
-        solar cells, which generate electrical power. PV installations may be 
-        ground-mounted, rooftop-mounted, wall-mounted or floating. The mount may 
-        be fixed or use a solar tracker to follow the sun across the sky.
+        Из-за разницы температур воздушных масс возникает разность давления и 
+        появляется ветер, который может крутить лопасти ветрогенератора. Нагревая 
+        землю и водные ресурсы планеты, солнцем в атмосферу выпаривается огромное 
+        количество воды, которая переносится на сотни и тысячи километров, выпадая 
+        в виде осадков или замерзая в ледниках. Потоки воды образуют реки, а человек 
+        снова извлекает из этого пользу, используя гидроэлектростанции.
+        '''
+        '''
+        С конца **XIX века**, когда учёные открыли фотоэлектрический эффект, у 
+        человечества появился способ прямого преобразования солнечного света 
+        в электричество. Важность технологии получения электричества напрямую 
+        от солнечного света и понимание принципов, лежащих в ее основе, нашли 
+        свое отражение и в, пожалуй, самой известной награде в области науки – 
+        Нобелевской премии. В течение **XX века** различные учёные, работы которых 
+        важны для данной технологии, несколько раз получали Нобелевские премии. 
+        К концу **50-х годов XX века** были разработаны устройства – солнечные панели, 
+        которые позволяли получать электроэнергию в достаточном количестве для работы 
+        маломощных устройств. Практически сразу же солнечные панели нашли свое 
+        применение в разнообразных космических аппаратах. В этой области солнечные 
+        панели оказались незаменимыми. К началу **XXI века** технологии солнечных панелей 
+        развились достаточно для того, чтобы найти себе промышленное применение в 
+        земных условиях. По состоянию на сегодняшний день есть отдельные регионы 
+        (например, на некоторых территориях Индии), где строительство электростанции, 
+        состоящей из солнечных панелей, является самым дешевым и эффективным способом 
+        электрификации местности. Даже в нашей, казалось бы, достаточно северной и не 
+        самой солнечной стране введен в эксплуатацию целый ряд электростанций на 
+        солнечных панелях.
+        ***
         '''
         
+        '''
+        ### Принцип работы солнечной панели  
+        '''
+        '''
+        Давайте разберём, как же работает солнечная панель.  
+        '''
+        '''
+        Принцип работы фотоэлементов, из которых состоит солнечная панель основан 
+        на фотогальваническом эффекте, который заключается в возникновении напряжения 
+        или электрического тока в веществе под действием света.  
+        '''
+        with st.expander('Рисунок 1. Принципиальная схема фотоэлемента'):
+            '''
+        
+            '''
+        '''
+        Фотоэлемент на основе полупроводников состоит из двух очень тонких слоев 
+        (чтобы они были проницаемы для фотонов) толщиной обычно порядка 0,2 мм с 
+        разным типом проводимости, совместно образующих так называемый *p-n-переход*. 
+        К слоям с разных сторон подведены металлические контакты, которые подключены 
+        к внешней цепи. Роль катода играет слой с *n-проводимостью* (применяется 
+        материал с избытком валентных электронов, то есть характеризуемый электронной 
+        проводимостью), роль анода – *p-слой* (материал с дырочной проводимостью; 
+        «дырка» – это квазичастица, в данном контексте это условное «место» в веществе 
+        где нет электрона, но в котором электрон может оказаться; направленное движение 
+        электронов, когда они занимают такие «свободные» места, принято называть 
+        электрическим током в веществе с дырочной проводимостью).
+        '''
     with scheme_container:
         pass
     with basics_container:

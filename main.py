@@ -94,7 +94,6 @@ works = ['Introduction',
 # ==============================
 # Sidebar
 # ==============================
-
 st.sidebar.image('./Images/logo.png')
 st.sidebar.markdown('***')
 st.sidebar.header('PV cloud model')

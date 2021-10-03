@@ -10,22 +10,18 @@ from bokeh.plotting import figure
 from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet
 from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
 from panels import panels
+from itertools import cycle
+from bokeh.palettes import Dark2_5 as palette
 
 from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
 
+# customization
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
+colors = cycle(palette)
 
 # ==============================
 # Session init
 # ==============================
-if 'journal' not in st.session_state:
-    st.session_state.journal = pd.DataFrame({'':['','','','', '', '']}, columns = [''], 
-                                            index=['I sc, A/cm2',
-                                                    'U oc, V',
-                                                    'I nominal, A/cm2',
-                                                    'U nominal, V',
-                                                    'Fill factor, %',
-                                                    'Efficiency, %'])
 empty_panel = { # spec parameters
                 'label':None,
                 'I_max':None, 'U_max':None, 'Isc':None, 'Uoc':None,
@@ -38,22 +34,35 @@ empty_panel = { # spec parameters
                 'Efficiency': None,
                 'E_month': {}
                 }
-if 'current_panel' not in st.session_state:
-    st.session_state.current_panel = empty_panel
-if 'comparison_panel' not in st.session_state:
-    st.session_state.comparison_panel = empty_panel
-if 'conclusion' not in st.session_state:
-    st.session_state.conclusion = ''
-if 'coordinates' not in st.session_state:
-    st.session_state.coordinates = {'lon':0.00,
-                                    'lat':0.00,
-                                    'x_Merc':0.00,
-                                    'y_Merc':0.00
-                                    }
-if 'temperature' not in st.session_state:
-    st.session_state.temperature = {
 
-                                    }
+def init_session():
+    for key in st.session_state.keys():
+        del st.session_state[key]
+    if 'journal' not in st.session_state:
+        st.session_state.journal = pd.DataFrame({'':['','','','', '', '']}, columns = [''], 
+                                                index=['I sc, A/cm2',
+                                                        'U oc, V',
+                                                        'I nominal, A/cm2',
+                                                        'U nominal, V',
+                                                        'Fill factor, %',
+                                                        'Efficiency, %'])
+    if 'current_panel' not in st.session_state:
+        st.session_state.current_panel = empty_panel
+    if 'comparison_panel' not in st.session_state:
+        st.session_state.comparison_panel = empty_panel
+    if 'results' not in st.session_state:
+        st.session_state.results = {}
+    if 'coordinates' not in st.session_state:
+        st.session_state.coordinates = {'lon':0.00,
+                                        'lat':0.00,
+                                        'x_Merc':0.00,
+                                        'y_Merc':0.00
+                                        }
+    if 'temperature' not in st.session_state:
+        st.session_state.temperature = {
+
+                                        }
+
 # ==============================
 
 local_label = 'local'           #'local' or 'web' in case of using server with api
@@ -75,14 +84,12 @@ def get_ivc(panel_label):
             if panel['label']==panel_label:
                 req = requests.get(panel['url']).json()
                 result.update(req)
-                print(result)
                 return result
     if local_label == 'local':
         for panel in all_panels:
             if panel['label']==panel_label:
                 req = panel["prop"]
                 result.update(req)
-                print(result)
                 return result
 
 works = ['Введение', 
@@ -119,7 +126,7 @@ for item in works:
             '''***'''
 
 if tab_selected == works[0]:
-    
+    init_session()
     introduction_container = st.container()
     scheme_container = st.container()
     basics_container = st.container()
@@ -243,7 +250,6 @@ if tab_selected == works[0]:
         '''
 
 if tab_selected == works[1]:
-    
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -309,7 +315,7 @@ if tab_selected == works[1]:
         '**Количество ячеек в солнечной панели: **', st.session_state.current_panel['cell_count']
         '**Площадь одной ячейки: **', st.session_state.current_panel['cell_area']
         p = figure(title = "I-V зависимость", plot_height=300, 
-                    x_axis_label='Напряжение (U), В ', y_axis_label='Ток (I), А')
+                    x_axis_label='Напряжение (U), В ', y_axis_label='Сила тока (I), А')
         p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
         p.add_tools(CrosshairTool())
         st.bokeh_chart(p, use_container_width=True)
@@ -344,20 +350,20 @@ if tab_selected == works[1]:
             '''
             col1, col2, col3 = st.columns(3)
             with col1:
-                Isc = st.number_input('Specific short current value (I sc, A/cm2)')
-                Inom = st.number_input('Specific max operation current (I nominal, A/cm2)')
+                Isc = st.number_input('Удельная сила тока короткого замыкания (I sc, A/cm2)')
+                Inom = st.number_input('Удельный максимальная рабочая сила тока (I nominal, A/cm2)')
             with col2:
-                Uoc = st.number_input('Open circuit voltage (U oc, V)')
-                Unom = st.number_input('Max operation voltage (U nominal, V)')
+                Uoc = st.number_input('Напряжение открытой цепи (U oc, V)')
+                Unom = st.number_input('Максимальное рабочее напряжение (U nominal, V)')
             with col3:
-                FF = st.number_input('Calculated fill factor, %')
-                Eff = st.number_input('Calculated efficiency, %')
-            if st.button('Add to results'):
+                FF = st.number_input('Рассчитаный фактор заполнения, %')
+                Eff = st.number_input('Рассчитанный КПД, %')
+            if st.button('Добавить результаты'):
                 st.session_state.journal[st.session_state.current_panel['label']] = [Isc, Inom, Uoc, Unom, FF, Eff]
             '''
             ---
             '''
-            if st.button('Clear all results'):
+            if st.button('Очистить все результаты'):
                 st.session_state.journal = pd.DataFrame({'':['','','','', '', '']}, columns = [''], 
                                         index=['I sc, A/cm2',
                                                 'U oc, V',
@@ -365,7 +371,7 @@ if tab_selected == works[1]:
                                                 'U nominal, V',
                                                 'Fill factor, %',
                                                 'Efficiency, %'])
-            if st.button('Clear last result'):
+            if st.button('Очистить последний результат'):
                 if st.session_state.current_panel['label'] in st.session_state.journal.keys():
                     del st.session_state.journal[st.session_state.current_panel['label']]
 
@@ -374,35 +380,35 @@ if tab_selected == works[1]:
         ---
         '''
     with conclusions_container:
-        with st.expander('Modify conclusion'):
+        with st.expander('Редактировать выводы'):
             entered_conclusion = st.text_input('')
-            if st.button('Save'):
-                st.session_state.conclusion = entered_conclusion
+            if st.button('Сохранить'):
+                st.session_state.results['conclusion'] = entered_conclusion
         '''
-        ### Conclusions  
+        ### Выводы  
         '''
-        st.write(st.session_state.conclusion)
+        if 'conclusion' in st.session_state.results:
+            st.write(st.session_state.results['conclusion'])
         '''
         ---
         '''
         '''
-        *Here you can make auto-check of your results.*
+        *Вы можете выполнить автоматическую проверку результатов.*
         '''
-        if st.button('Check results'):
-            if len(st.session_state.conclusion) < 300:
-                st.write('> Not very informative conclusion!')
+        if st.button('Проверка результатов'):
+            if len(st.session_state.results['conclusion']) < 300:
+                st.write('> Выводы не достаточно развернуты!')
             if (len(st.session_state.journal.columns)-1) < 3:
-                st.write('> To few solar panels examined. Not enough data.')
+                st.write('> Мало данных. Исследуйте больше типов солнечных панелей')
             else:
-                '''> #### Auto tests completed! Seems everything is fine.  
+                '''> #### Автоматические тесты успешно пройдены.  
                 '''
                 '''
-                *If you want, you can hide all the expanders above and print the report 
-                with Ctrl+P on Windows or Cmd+P on MacOs*
+                *Если требуется, можно распечатать отчет при помощи Ctrl+P (Windows) или Cmd+P (MacOS)*
                 '''
 
 if tab_selected == works[2]:
-    st.session_state.current_panel = empty_panel
+
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -410,9 +416,8 @@ if tab_selected == works[2]:
 
     with introduction_container:
         '''
-        ### Introduction & theoretical background  
-        The work of solar panels depends not only on its type, but also on the surrounding
-        environment....
+        ### Введение и элементы теории   
+        Данная работа...
     
         *Here add text*  
         '''
@@ -421,32 +426,27 @@ if tab_selected == works[2]:
         '''
     with work_description_container:
         '''
-        ### The aim of the work
-        **The aim** of this work is to understand the main basics of the 
-        solar panels in terms of working in different conditions/geographics.  
-        You will know ....
+        ### Цель работы
+        **Цель** работы заключается в ...
 
         *Here add text*  
-        '''
-        '''
+          
         ---
         '''
-
     with practice_container:
         '''
-        ### Practice
-        First, choose coordinates on map and enter them in the fields above the map.  
-        Push the button to set up the chosen position.
+        ### Практическая часть
+        В первую очередь... 
         '''
 
         col1, col2 = st.columns(2)
         with col1:
-            lon_inp = st.number_input('Longitude', min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+            lon_inp = st.number_input('Долгота', min_value=0.00, max_value=180.00, value=0.00, step=1.0)
         with col2:
-            lat_inp = st.number_input('Latitude', min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+            lat_inp = st.number_input('Широта', min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
 
 
-        if st.button('Set position'):
+        if st.button('Установить позицию'):
             st.session_state.coordinates['lon'] = lon_inp
             st.session_state.coordinates['lat'] = lat_inp
             [st.session_state.coordinates['x_Merc'], st.session_state.coordinates['y_Merc']] = LatLongToMerc(lon_inp, lat_inp)   
@@ -465,9 +465,10 @@ if tab_selected == works[2]:
         # p.js_on_event(events.DoubleTap, callback)
         st.bokeh_chart(p, use_container_width=True)  
 
-        input_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        input_ang = st.sidebar.number_input('Угол поворота', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
-        if st.sidebar.button('Calculate'):
+
+        if st.sidebar.button('Расчет'):
             st.session_state.current_panel = get_ivc(selected_panel)
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 
@@ -488,71 +489,174 @@ if tab_selected == works[2]:
                                         tC = 0
                                         )
             st.session_state.current_panel.update(new_panel)
-    
-        '**Selected panel: **', st.session_state.current_panel['label']
-        p = figure(title = "I-V curve", plot_height=400, 
-                    x_axis_label='Voltage (U), V ', y_axis_label='Current (I), A')
-        p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
+
+        '**Выбранная панель: **', st.session_state.current_panel['label']
+        p = figure(title = "I-V зависимость", plot_height=400, 
+                    x_axis_label='Напряжение (U), V ', y_axis_label='Сила тока (I), A')
+        p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], 
+                line_width=2, line_dash='dashed')
         for key, value in st.session_state.current_panel['IVC']['month'].items():
-            p.line(value['U'], value['I'])
+            p.line(value['U'], value['I'], color=next(colors), legend_label=key)
+        p.legend.location = "top_left"
         p.add_tools(CrosshairTool())
         st.bokeh_chart(p, use_container_width=True)
 
-        p2 = figure(title = "P-V curve", plot_height=400, 
-                    x_axis_label='Voltage (U), V ', y_axis_label='Power (P), W')
-        p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], line_width=2)
+        p2 = figure(title = "P-V зависимость", plot_height=400, 
+                    x_axis_label='Напряжение (U), V ', y_axis_label='Мощность (P), W')
+        p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], 
+                line_width=2, line_dash='dashed')
         for key, value in st.session_state.current_panel['IVC']['month'].items():
-            p2.line(value['U'], value['P'])
+            p2.line(value['U'], value['P'], color=next(colors), legend_label=key)
+        p2.legend.location = "top_left"
         p2.add_tools(CrosshairTool())
         st.bokeh_chart(p2, use_container_width=True)
         
-        E_max = []; E_avg = []; months = {}; x = []; i=1
+
+        E_max = []; E_avg = []; months = {}; x = []; i=1        
         for key, value in st.session_state.current_panel['E_month'].items():
             E_max.append(value['E_max'])
             E_avg.append(value['E'])
             months[i]=key
             x.append(i); i+=1
         source = ColumnDataSource(data=dict(
-                                    x=x,
-                                    y1=E_max,
-                                    y2=E_avg
-                                    ))
-        p3 = figure(title = "Month energy", plot_height=400, x_axis_label='month ', 
-                        y_axis_label='Avg energy')
-
+                                                                                x=x,
+                                                                                y1=E_max,
+                                                                                y2=E_avg
+                                                                                ))
+        p3 = figure(title = "Среднемесячная выработка энергии", plot_height=400, x_axis_label='Месяц', 
+                        y_axis_label='Энергия, кВт*ч')
         p3.vbar_stack(['y1', 'y2'], x='x', width= 0.9, color=("grey", "lightgrey"), source=source)
         p3.xaxis.ticker = x
         p3.xaxis.major_label_overrides = months
         p3.add_tools(CrosshairTool())
         st.bokeh_chart(p3, use_container_width=True)
 
+        with st.expander('Задача 1'):
+            '''
+            **Задача на определение угла**
+            '''
+            '''
+            Предположим, что в Сколково в окрестностях точки с координатами:  
+            > *55.69553° с. ш.*  
+            > *37.35298° в. д.*  
+
+            планируется построить новое здание, крыша которого будет оборудована монокристаллическими 
+            солнечными панелями. Существует четыре проекта здания, которые в том числе отличаются углом 
+            наклона кровли, а именно: 16°, 24°, 32° и 43°. Определите, какой из вариантов является наиболее 
+            оптимальным с точки зрения эффективности работы солнечных панелей. Считайте, что солнечные 
+            панели находятся под таким же углом наклона, что и кровля.  
+            '''
+
+            answer_1 = st.number_input('Ответ в виде целого числа:', step=1)
+            st.session_state.results['answer_1'] = answer_1
+        with st.expander('Задача 2'):
+            '''
+            **Задача на выбор географической точки**
+            '''
+            '''
+            Гипотетически существующая компания «друзья Солнца» занимается строительством солнечных 
+            электростанций. Компания использует аморфные солнечные панели, которые крепятся на стойках, 
+            обеспечивающих положение панели под углом 45° к горизонту. Для строительства очередной электростанции 
+            с 500 солнечных панелей компания рассматривает несколько возможных площадок, а именно:  '''
+            '''
+            (1) В окрестностях ВДЦ «Смена»
+            > *44.7831° с. ш.*  
+            > *37.3946° в. д.*  
+
+            (2) в окрестностях города Оренбург  
+            > *51.8643° с. ш.*  
+            > *55.1015° в. д.*  
+
+            (3) в окрестностях города Горно-Алтайск  
+            > *51.9791° с. ш.*  
+            > *85.9813° в. д.*  
+            '''
+            '''
+            Оцените, при строительстве на какой из этих площадок средняя в течение года генерируемая электростанцией мощность будет максимальной.
+            '''
+            answer_2 = st.selectbox('Выбранный вариант ответа:', [1,2,3])
+            st.session_state.results['answer_2'] = answer_2
+        with st.expander('Задача 3'):
+            '''
+            **Задача на выбор лучшего типа солнечной панели**
+            '''
+            '''
+            Фонтаны Петергофа известны своей красотой и разнообразием не только у нас в стране, но и далеко за ее пределами. 
+            Ежегодно ими любуются миллионы туристов. Однако, для обеспечения работы насосов фонтанов, необходимо регулярно 
+            поддерживать электрические сети Петергофа в очень хорошем состоянии, что достаточно сложно сделать в городе, где 
+            такая высокая плотность архитектурных памятников и объектов культурного наследия. Предположим, что для повышения 
+            энергетической безопасности на некоторых кровлях зданий Петергофа решено установить солнечные панели. Поскольку 
+            площадь панелей сильно ограничена, необходимо установить самые эффективные, дающие максимальное количество 
+            электроэнергии в период работы фонтанов - с мая по сентябрь. Определите, какого типа солнечные панели стоит 
+            использовать в этом проекте.  
+            Примерные географические координаты зданий, на которых планируется разместить солнечные панели:
+            > *59.879° с. ш.*  
+            > *29.898° в. д.*  
+            
+            Угол наклона крыш, который совпадает с углом наклона солнечных панелей считайте равным 30°.  
+            '''
+            answer_3 = st.selectbox('Выбранная солнечная панель:', pv_list)
+            st.session_state.results['answer_3'] = answer_3
+        with st.expander('Задача 4'):
+            '''
+            **Задача на ВАХ**
+            '''
+            '''
+            Вам необходимо разработать энергосистему, которая состоит из поликристаллических солнечных панелей, 
+            может быть установлена в окрестностях города Ростов-на-Дону:  
+            > *47.15623° с. ш.*  
+            > *39.56059° в. д.*  
+
+            и обеспечивает следующие средние выходные параметры:  
+            > Постоянное напряжение - *400 В*  
+            > Мощность - *2 кВт*  
+
+            Оцените, какое минимальное количество поликристаллических панелей вам для этого необходимо и
+            как необходимо соединить их между собой. 
+            '''
+            answer_4 = st.number_input('Введите общее количество панелей:', step=1)
+            st.session_state.results['answer_4'] = answer_4
+            '''
+            *Примечание:*  
+            Панели соединены в блоки, состоящие из *последовательно* соединенных панелей. 
+            Данные блоки соединены *параллельно*
+            '''
         '''
         ---
         '''
     with conclusions_container:
-        with st.expander('Modify conclusion'):
+        with st.expander('Редактировать выводы'):
             entered_conclusion = st.text_input('')
-            if st.button('Save'):
-                st.session_state.conclusion = entered_conclusion
+            if st.button('Сохранить'):
+                st.session_state.results['conclusion'] = entered_conclusion
         '''
-        ### Conclusions  
+        ### Выводы  
         '''
-        st.write(st.session_state.conclusion)
+        if 'conclusion' in st.session_state.results:
+            st.write(st.session_state.results['conclusion'])
         '''
         ---
         '''
         '''
-        *Here you can make auto-check of your results.*
+        *Вы можете выполнить автоматическую проверку результатов.*
         '''
-        if st.button('Check results'):
-            if len(st.session_state.conclusion) < 300:
-                st.write('> Not very informative conclusion!')
+        if st.button('Проверка результатов'):
+            st.session_state.results['conclusion'] = entered_conclusion
+            if len(st.session_state.results['conclusion']) < 300:
+                st.write('> Выводы не достаточно развернуты!')
+            if st.session_state.results['answer_1']!=777:
+                st.write('> Проверьте ответ к задаче 1!')
+            if st.session_state.results['answer_2']!=777:
+                st.write('> Проверьте ответ к задаче 2!')
+            if st.session_state.results['answer_3']!=777:
+                st.write('> Проверьте ответ к задаче 3!')
+            if st.session_state.results['answer_4']!=777:
+                st.write('> Проверьте ответ к задаче 4!')           
             else:
-                '''> #### Auto tests completed! Seems everything is fine.  
+                '''> #### Автоматические тесты успешно пройдены.  
                 '''
                 '''
-                *If you want, you can hide all the expanders above and print the report 
-                with Ctrl+P on Windows or Cmd+P on MacOs*
+                *Если требуется, можно распечатать отчет при помощи Ctrl+P (Windows) или Cmd+P (MacOS)*
                 '''
 
 if tab_selected == works[3]:
@@ -680,11 +784,11 @@ if tab_selected == works[3]:
         with st.expander('Modify conclusion'):
             entered_conclusion = st.text_input('')
             if st.button('Save'):
-                st.session_state.conclusion = entered_conclusion
+                st.session_state.results['conclusion'] = entered_conclusion
         '''
         ### Conclusions  
         '''
-        st.write(st.session_state.conclusion)
+        st.write(st.session_state.results['conclusion'])
         '''
         ---
         '''
@@ -692,7 +796,7 @@ if tab_selected == works[3]:
         *Here you can make auto-check of your results.*
         '''
         if st.button('Check results'):
-            if len(st.session_state.conclusion) < 300:
+            if len(st.session_state.results['conclusion']) < 300:
                 st.write('> Not very informative conclusion!')
             else:
                 '''> #### Auto tests completed! Seems everything is fine.  

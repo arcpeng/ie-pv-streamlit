@@ -195,8 +195,8 @@ def calculate_month_ivc(input_lon: float, input_lat: float, input_ang: float,
     # calculated energy per day achievable from this panel for the input_ang
 
     optAngMonthList = nasaData['SI_EF_OPTIMAL_ANG'][:12]                        #degrees
-    maxMonthEnergy = [i * Efficiency * (1 + tC/100 * (nasaData['AVG_TEMP'][i] - 20)) for i in optIrrMonthList]                  #Wh/m2/day
-    calcMonthEnergy = [i * Efficiency * (1 + tC/100 * (nasaData['AVG_TEMP'][i] - 20)) for i in calcIrrMontList]                 #Wh/m2/day
+    maxMonthEnergy = [i * Efficiency * (1 + tC/100 * (nasaData['AVG_TEMP'][ind] - 20)) for ind, i in enumerate(optIrrMonthList)]                  #Wh/m2/day
+    calcMonthEnergy = [i * Efficiency * (1 + tC/100 * (nasaData['AVG_TEMP'][ind] - 20)) for ind, i in enumerate(calcIrrMontList)]                 #Wh/m2/day
 
     dayLength = [(12 - (24/math.pi) * 
                         math.asin(math.tan(math.radians(input_lat)) * 0.4348 * 

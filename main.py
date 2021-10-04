@@ -7,7 +7,8 @@ import streamlit as st
 import requests
 from bokeh import events
 from bokeh.plotting import figure
-from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet
+from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet, FactorRange
+from bokeh.transform import dodge
 from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
 from panels import panels
 from itertools import cycle
@@ -30,7 +31,8 @@ empty_panel = { # spec parameters
                 # calculated parameters
                 'IVC':{
                     'nom':{'I':None, 'U':None, 'P':None},
-                    'month':{}                                        },
+                    'month':{}                                        
+                    },
                 'Efficiency': None,
                 'E_month': {}
                 }
@@ -489,46 +491,46 @@ if tab_selected == works[2]:
                                         )
             st.session_state.current_panel.update(new_panel)
 
+
         '**Выбранная панель: **', st.session_state.current_panel['label']
         p = figure(title = "I-V зависимость", plot_height=400, 
                     x_axis_label='Напряжение (U), V ', y_axis_label='Сила тока (I), A')
-        p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], 
-                line_width=2, legend_label='MAX')
-        for key, value in st.session_state.current_panel['IVC']['month'].items():
-            p.line(value['U'], value['I'], color=next(colors), legend_label=key)
-        p.legend.location = "top_left"
-        p.legend.click_policy="hide"
-        p.add_tools(CrosshairTool())
-        st.bokeh_chart(p, use_container_width=True)
-
         p2 = figure(title = "P-V зависимость", plot_height=400, 
                     x_axis_label='Напряжение (U), V ', y_axis_label='Мощность (P), W')
+        
+        p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], 
+                line_width=2, legend_label='MAX')
         p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], 
                 line_width=2, legend_label='MAX')
-        for key, value in st.session_state.current_panel['IVC']['month'].items():
-            p2.line(value['U'], value['P'], color=next(colors), legend_label=key)
-        p2.legend.location = "top_left"
-        p2.legend.click_policy="hide"
-        p2.add_tools(CrosshairTool())
-        st.bokeh_chart(p2, use_container_width=True)
-        
 
-        E_max = []; E_avg = []; months = {}; x = []; i=1        
-        for key, value in st.session_state.current_panel['E_month'].items():
-            E_max.append(value['E_max'])
-            E_avg.append(value['E'])
-            months[i]=key
-            x.append(i); i+=1
-        source = ColumnDataSource(data=dict(
-                                            x=x,
-                                            y1=E_max,
-                                            y2=E_avg
-                                            ))
-        p3 = figure(title = "Среднемесячная выработка энергии", plot_height=400, x_axis_label='Месяц', 
-                        y_axis_label='Энергия, кВт*ч')
-        p3.vbar_stack(['y1', 'y2'], x='x', width= 0.9, color=("grey", "lightgrey"), source=source)
-        p3.xaxis.ticker = x
-        p3.xaxis.major_label_overrides = months
+        for key, value in st.session_state.current_panel['IVC']['month'].items():
+            color = next(colors)
+            p.line(value['U'], value['I'], color=color, legend_label=key)
+            p2.line(value['U'], value['P'], color=color, legend_label=key)
+        
+        for i in [p, p2]:
+            i.legend.location = "top_left"
+            i.legend.click_policy="hide"
+            i.add_tools(CrosshairTool())
+            st.bokeh_chart(i, use_container_width=True)    
+
+        if len(st.session_state.current_panel['E_month']) > 0:
+            [E_max, E_avg, months] = zip(*[(value['E_max'], value['E'], key) for key, value in st.session_state.current_panel['E_month'].items()])
+        else: [E_max, E_avg, months] = [[],[],[]]
+        data = {'months':months, 'E_max':E_max, 'E_avg':E_avg}
+        source = ColumnDataSource(data=data)
+        
+        p3 = figure(x_range=months, plot_height=400, title="Среднемесячная выработка энергии",
+                    x_axis_label='Месяц', y_axis_label='Энергия, кВт*ч')
+        p3.vbar(x=dodge('months', -0.2, range=p3.x_range), top='E_max', width=0.4, source=source,
+                    color="#c9d9d3", legend_label="Максимум")
+        p3.vbar(x=dodge('months', 0.2, range=p3.x_range), top='E_avg', width=0.4, source=source,
+                    color="#718dbf", legend_label="Расчет")
+        p3.x_range.range_padding = 0.1
+        p3.y_range.start = 1
+        if len(E_max)>0: p3.y_range.end = max(E_max)*1.2 
+        p3.legend.click_policy="hide"
+        p3.legend.orientation = "horizontal"
         p3.add_tools(CrosshairTool())
         st.bokeh_chart(p3, use_container_width=True)
 
@@ -777,22 +779,28 @@ if tab_selected == works[3]:
             i.add_tools(CrosshairTool())
             st.bokeh_chart(i, use_container_width=True)
 
-        E_max = []; E_avg = []; months = {}; x = []; i=1        
-        for key, value in st.session_state.current_panel['E_month'].items():
-            E_max.append(value['E_max'])
-            E_avg.append(value['E'])
-            months[i]=key
-            x.append(i); i+=1
-        source = ColumnDataSource(data=dict(
-                                                                                x=x,
-                                                                                y1=E_max,
-                                                                                y2=E_avg
-                                                                                ))
-        p3 = figure(title = "Среднемесячная выработка энергии", plot_height=400, x_axis_label='Месяц', 
-                        y_axis_label='Энергия, кВт*ч')
-        p3.vbar_stack(['y1', 'y2'], x='x', width= 0.9, color=("grey", "lightgrey"), source=source)
-        p3.xaxis.ticker = x
-        p3.xaxis.major_label_overrides = months
+
+        if len(st.session_state.current_panel['E_month']) > 0:
+            [E_max, E_avg, months] = zip(*[(value['E_max'], value['E'], key) for key, value in st.session_state.comparison_panel['E_month'].items()])
+            E_cor = [item['E'] for item in st.session_state.current_panel['E_month'].values()]
+        else: [E_max, E_avg, months, E_cor] = [[],[],[],[]]
+        data = {'months':months, 'E_max':E_max, 'E_avg':E_avg, 'E_cor':E_cor}
+        source = ColumnDataSource(data=data)
+
+        p3 = figure(x_range=months, plot_height=400, title="Среднемесячная выработка энергии",
+                    x_axis_label='Месяц', y_axis_label='Энергия, кВт*ч')
+        p3.vbar(x=dodge('months', -0.2, range=p3.x_range), top='E_max', width=0.2, source=source,
+                    color="#c9d9d3", legend_label="Максимум")
+        p3.vbar(x=dodge('months', 0, range=p3.x_range), top='E_avg', width=0.2, source=source,
+                    color="#718dbf", legend_label="Расчет")
+        p3.vbar(x=dodge('months', 0.2, range=p3.x_range), top='E_cor', width=0.2, source=source,
+                    color="#e84d60", legend_label="Коррекция")
+
+        p3.x_range.range_padding = 0.1
+        p3.y_range.start = 1
+        if len(E_max)>0: p3.y_range.end = max(E_max)*1.2 
+        p3.legend.click_policy="hide"
+        p3.legend.orientation = "horizontal"
         p3.add_tools(CrosshairTool())
         st.bokeh_chart(p3, use_container_width=True)
 

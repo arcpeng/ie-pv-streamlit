@@ -98,8 +98,7 @@ works = ['Введение',
         'Работа №1: Понимание поляризационных кривых', 
         'Работа №2: Влияние координат', 
         'Работа №3: Изучение эффекта температуры',
-        'Работа №4: Спектральный эффект',
-        'Рекомендации']
+        'Полезная литература']
 
 # ==============================
 # Sidebar
@@ -112,9 +111,6 @@ st.sidebar.markdown('''
 ''')
 tab_selected = st.sidebar.selectbox('Выберете работу:', works, on_change=init_session)
 
-if tab_selected != works[0]:
-    st.sidebar.subheader('Параметры модели')
-    selected_panel = st.sidebar.selectbox('Выберете солнечную панель:', pv_list)
     
 # ==============================
 # Main page
@@ -251,6 +247,9 @@ if tab_selected == works[0]:
         '''
 
 if tab_selected == works[1]:
+    st.sidebar.subheader('Параметры модели')
+    selected_panel = st.sidebar.selectbox('Выберете солнечную панель:', pv_list)
+
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -409,7 +408,8 @@ if tab_selected == works[1]:
                 '''
 
 if tab_selected == works[2]:
-
+    st.sidebar.subheader('Параметры модели')
+    selected_panel = st.sidebar.selectbox('Выберете солнечную панель:', pv_list)
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -663,7 +663,8 @@ if tab_selected == works[2]:
                 '''
 
 if tab_selected == works[3]:
-
+    st.sidebar.subheader('Параметры модели')
+    selected_panel = st.sidebar.selectbox('Выберете солнечную панель:', pv_list)
     introduction_container = st.container()
     work_description_container = st.container()
     practice_container = st.container()
@@ -931,7 +932,6 @@ if tab_selected == works[3]:
                 '''
                 *Если требуется, можно распечатать отчет при помощи Ctrl+P (Windows) или Cmd+P (MacOS)*
                 '''
-
 
 if tab_selected == works[4]:
     whatnext_container = st.container()

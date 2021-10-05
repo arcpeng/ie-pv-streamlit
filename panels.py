@@ -52,7 +52,7 @@ panels = [
                     "Uoc": 0.66,
                     "cell_area": 0.0001,
                     "cell_count": 1,
-                    "tC": 0.0
+                    "tC": -0.5
             }
         }
     ]

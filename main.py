@@ -82,7 +82,7 @@ tab_selected = st.sidebar.selectbox(text['sidebar_selector'][lang], works, on_ch
 
 # ==============================
 
-local_label = 'web'           #'local' or 'web' in case of using server with api
+local_label = 'local'           #'local' or 'web' in case of using server with api
 
 if local_label == 'web':
     API_URL = 'http://178.154.215.108/solar/panels'
@@ -92,6 +92,7 @@ elif local_label == 'local':
 
 pv_list = []
 for panel in all_panels:
+    print(panel['label'])
     pv_list.append(panel['label'][lang])
 
 def get_ivc(panel_label):

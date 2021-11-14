@@ -129,7 +129,7 @@ if tab_selected == works[0]:
     with introduction_container:
         st.markdown(text['work0']['introduction'][lang][0])
         st.markdown(text['work0']['introduction'][lang][1])
-        st.markdown('<p style="text-align: center; padding-right:0%; padding-left:0%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage_ru/Images/0_Picture_0.png", width=100%/></p>', 
+        st.markdown('<p style="text-align: center; padding-right:0%; padding-left:0%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage/Images/0_Picture_0.png", width=100%/></p>', 
             unsafe_allow_html=True)
         st.markdown(text['work0']['introduction'][lang][2])
 
@@ -138,10 +138,10 @@ if tab_selected == works[0]:
         st.markdown(text['work0']['basics'][lang][1])
         with st.expander(text['work0']['basics'][lang][2]):
             if lang=='ENG':
-                st.markdown('<p style="text-align: center; padding-right:10%; padding-left:10%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage_ru/Images/0_Picture_1_ENG.png", width=90%/></p>', 
+                st.markdown('<p style="text-align: center; padding-right:10%; padding-left:10%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage/Images/0_Picture_1_ENG.png", width=90%/></p>', 
                         unsafe_allow_html=True)
             if lang=='RU':
-                st.markdown('<p style="text-align: center; padding-right:10%; padding-left:10%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage_ru/Images/0_Picture_1_RU.png", width=90%/></p>', 
+                st.markdown('<p style="text-align: center; padding-right:10%; padding-left:10%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage/Images/0_Picture_1_RU.png", width=90%/></p>', 
                         unsafe_allow_html=True)                
     
     with theory_container:
@@ -288,10 +288,10 @@ if tab_selected == works[2]:
         
         with st.expander(text['work2']['introduction'][lang][2]):
             if lang=='ENG':
-                st.markdown('<p style="text-align: center; padding-right:20%; padding-left:20%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage_ru/Images/2_Picture_1_ENG.png", width=100%/></p>', 
+                st.markdown('<p style="text-align: center; padding-right:20%; padding-left:20%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage/Images/2_Picture_1_ENG.png", width=100%/></p>', 
                         unsafe_allow_html=True)
             if lang=='RU':
-                st.markdown('<p style="text-align: center; padding-right:20%; padding-left:20%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage_ru/Images/2_Picture_1_RU.png", width=100%/></p>', 
+                st.markdown('<p style="text-align: center; padding-right:20%; padding-left:20%"><img src="https://raw.githubusercontent.com/MelnikovAP/pv-streamlit/stage/Images/2_Picture_1_RU.png", width=100%/></p>', 
                         unsafe_allow_html=True)
         st.markdown(text['work2']['introduction'][lang][3])
         st.markdown(text['work2']['introduction'][lang][4])

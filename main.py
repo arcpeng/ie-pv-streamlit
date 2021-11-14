@@ -25,7 +25,7 @@ colors = cycle(palette)
 # Session init
 # ==============================
 empty_panel = { # spec parameters
-                'label':0,
+                'label':{'ENG':0,'RU':0},
                 'I_max':0, 'U_max':0, 'Isc':0, 'Uoc':0,
                 'cell_area':0, 'cell_count':0,
                 'tC':0,
@@ -67,35 +67,6 @@ def init_session():
                                         }
 
 # ==============================
-
-local_label = 'local'           #'local' or 'web' in case of using server with api
-
-if local_label == 'web':
-    API_URL = 'http://178.154.215.108/solar/panels'
-    all_panels = requests.get(API_URL).json()
-elif local_label == 'local':
-    all_panels = panels
-
-pv_list = []
-for panel in all_panels:
-    pv_list.append(panel['label'])
-
-def get_ivc(panel_label):
-    result = empty_panel.copy()
-    if local_label == 'web':
-        for panel in all_panels:
-            if panel['label']==panel_label:
-                req = requests.get(panel['url']).json()
-                result.update(req)
-                return result
-    if local_label == 'local':
-        for panel in all_panels:
-            if panel['label']==panel_label:
-                req = panel["prop"]
-                result.update(req)
-                return result
-
-# ==============================
 # Sidebar
 # ==============================
 st.sidebar.image('./Images/logo.png')
@@ -109,7 +80,35 @@ st.sidebar.markdown('**'+text['name'][lang]+'**')
 works = text['works'][lang]
 tab_selected = st.sidebar.selectbox(text['sidebar_selector'][lang], works, on_change=init_session)
 
-    
+# ==============================
+
+local_label = 'local'           #'local' or 'web' in case of using server with api
+
+if local_label == 'web':
+    API_URL = 'http://178.154.215.108/solar/panels'
+    all_panels = requests.get(API_URL).json()
+elif local_label == 'local':
+    all_panels = panels
+
+pv_list = []
+for panel in all_panels:
+    pv_list.append(panel['label'][lang])
+
+def get_ivc(panel_label):
+    result = empty_panel.copy()
+    if local_label == 'web':
+        for panel in all_panels:
+            if panel['label'][lang]==panel_label:
+                req = requests.get(panel['url']).json()
+                result.update(req)
+                return result
+    if local_label == 'local':
+        for panel in all_panels:
+            if panel['label'][lang]==panel_label:
+                req = panel["prop"]
+                result.update(req)
+                return result
+
 # ==============================
 # Main page
 # ==============================
@@ -195,7 +194,7 @@ if tab_selected == works[1]:
             st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
-        text['work1']['practice'][lang][1], st.session_state.current_panel['label']
+        text['work1']['practice'][lang][1], st.session_state.current_panel['label'][lang]
         text['work1']['practice'][lang][2], st.session_state.current_panel['cell_count']
         text['work1']['practice'][lang][3], st.session_state.current_panel['cell_area']
         p = figure(title = text['work1']['practice'][lang][4], plot_height=300, 
@@ -231,7 +230,7 @@ if tab_selected == works[1]:
                 FF = st.number_input(text['work1']['practice'][lang][20])
                 Eff = st.number_input(text['work1']['practice'][lang][21])
             if st.button(text['work1']['practice'][lang][22]):
-                st.session_state.journal[st.session_state.current_panel['label']] = [Isc, Inom, Uoc, Unom, FF, Eff]
+                st.session_state.journal[st.session_state.current_panel['label'][lang]] = [Isc, Inom, Uoc, Unom, FF, Eff]
             
             st.markdown(text['work1']['practice'][lang][25])
             
@@ -244,8 +243,8 @@ if tab_selected == works[1]:
                                                 'Fill factor, %',
                                                 'Efficiency, %'])
             if st.button(text['work1']['practice'][lang][24]):
-                if st.session_state.current_panel['label'] in st.session_state.journal.keys():
-                    del st.session_state.journal[st.session_state.current_panel['label']]
+                if st.session_state.current_panel['label'][lang] in st.session_state.journal.keys():
+                    del st.session_state.journal[st.session_state.current_panel['label'][lang]]
 
         st.write(st.session_state.journal)
         st.markdown(text['work1']['practice'][lang][25])
@@ -353,7 +352,7 @@ if tab_selected == works[2]:
             st.session_state.current_panel.update(new_panel)
 
 
-        text['work2']['practice'][lang][7], st.session_state.current_panel['label']
+        text['work2']['practice'][lang][7], st.session_state.current_panel['label'][lang]
         p = figure(title = text['work2']['practice'][lang][8], plot_height=400, 
                     x_axis_label=text['work2']['practice'][lang][9], 
                     y_axis_label=text['work2']['practice'][lang][10])
@@ -460,79 +459,26 @@ if tab_selected == works[3]:
     conclusions_container = st.container()
 
     with introduction_container:
-        '''
-        ### Введение и элементы теории   
-        Солнечные модули, как и остальное электронное оборудование, работают за 
-        счёт электрических процессов, подконтрольных законам термодинамики. 
-        А законы термодинамики гласят, что с ростом тепла снижается мощность. 
-        Повышение температуры создаёт внутреннее сопротивление внутри солнечного 
-        элемента, что снижает его эффективность. То есть с ростом температуры поток 
-        электронов внутри элемента нарастает, что вызывает увеличение силы тока и падение 
-        напряжения. Падение напряжения при этом больше, чем увеличение силы тока, поэтому 
-        общая мощность уменьшается, что приводит к тому, что панель работает с меньшей 
-        эффективностью, то есть её КПД становится ниже. Поэтому чем теплее температура 
-        окружающей среды, тем меньше выходная мощность фотоэлементов. 
-        '''
-        '''
-        Потери определяются **«температурным коэффициентом»**. 
-        **Температурный коэффициент** − это процент снижения эффективности с привязкой 
-        к градусам по Цельсию. Он показывает, насколько падает эффективность солнечной 
-        панели при повышении температуры воздуха на градус. Значение коэффициента 
-        производитель панелей получают опытным путем (и указывают в спецификациях). 
-        Оно разнится в зависимости от модели солнечной панели.
-        '''
-        '''
-        Тестирование параметров солнечных панелей проводится при температуре 25°C и 
-        обычно производители указывают их эффективность, принимая за норму 25°C.
-        Если температурный коэффициент солнечной панели -0.50, это означает, что выход 
-        мощности снизится на 0,50% за каждый градус выше 25°C. Несмотря на то, что такая 
-        цифра кажется незначительной, температура тёмной крыши, на которой установлена панель, 
-        может быть значительно выше 25°C в жаркий солнечный день. В летний период собственная 
-        температура солнечной батареи может подниматься до 60−70°C. В среднем при повышении 
-        температуры панели на 20°C, потери мощности составят порядка 10%. 
-        '''
-        '''
-        Тепловой коэффициент кремниевых поли- и монокристаллических панелей в среднем 
-        колеблется от -0.45% до -0.50%. Тепловой коэффициент аморфных солнечных панелей ниже 
-        (от -0,20% до -0,25%), однако их изначальная эффективность ниже, чем у моно- и поликристаллических.
-        Если повышение температуры способствует снижению КПД солнечных панелей, 
-        то некоторое понижение температуры может, наоборот, увеличить эффективность солнечных 
-        элементов: напряжение может быть даже выше номинального. 
-        '''
-        '''
-        ---
-        '''
+        st.markdown(text['work3']['introduction'][lang][0])
+        st.markdown(text['work3']['introduction'][lang][1])
+        st.markdown(text['work3']['introduction'][lang][2])
+        st.markdown(text['work3']['introduction'][lang][3])
+        st.markdown(text['work3']['introduction'][lang][4])
     with work_description_container:
-        '''
-        ### Цель работы
-        **Цель** работы заключается в определении зависимости выходных характеристик солнечной 
-        панели от её местоположения на нашей планете, а именно от угла наклона солнечной панели 
-        относительно падающих солнечных лучей, мощности солнечного излучения и температуры солнечных панелей.
-        '''
-        '''
-        ---
-        '''
+        st.markdown(text['work3']['work_description'][lang][0])
+        st.markdown(text['work3']['work_description'][lang][1])
     with practice_container:
-        '''
-        ### Практическая часть
-        В первую очередь выберите слева интересующую Вас солнечную панель и определите угол наклона солнечной 
-        панели относительно падающих солнечных лучей, а также установите координаты интересующей 
-        Вас местности. После нажатия на кнопку «Расчёт» будет выведена полученная при заданных условиях 
-        энергия за каждый месяц года.
-        '''
-        '''
-        Далее решите несколько задач.
-        Сделайте вывод.
-        '''
+        st.markdown(text['work3']['practice'][lang][0])
+        st.markdown(text['work3']['practice'][lang][1])
 
         col1, col2 = st.columns(2)
         with col1:
-            lon_inp = st.number_input('Долгота', min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+            lon_inp = st.number_input(text['work3']['practice'][lang][2], min_value=0.00, max_value=180.00, value=0.00, step=1.0)
         with col2:
-            lat_inp = st.number_input('Широта', min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+            lat_inp = st.number_input(text['work3']['practice'][lang][3], min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
 
 
-        if st.button('Установить позицию'):
+        if st.button(text['work3']['practice'][lang][4]):
             st.session_state.coordinates['lon'] = lon_inp
             st.session_state.coordinates['lat'] = lat_inp
             [st.session_state.coordinates['x_Merc'], st.session_state.coordinates['y_Merc']] = LatLongToMerc(lon_inp, lat_inp)   
@@ -551,10 +497,10 @@ if tab_selected == works[3]:
         # p.js_on_event(events.DoubleTap, callback)
         st.bokeh_chart(p, use_container_width=True)  
 
-        input_ang = st.sidebar.number_input('Угол наклона', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
+        input_ang = st.sidebar.number_input(text['work3']['practice'][lang][5], min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
 
-        if st.sidebar.button('Расчёт'):
+        if st.sidebar.button(text['work3']['sidebar_button'][lang]):
             st.session_state.current_panel = get_ivc(selected_panel)
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 
@@ -586,11 +532,11 @@ if tab_selected == works[3]:
             st.session_state.comparison_panel.update(st.session_state.current_panel)
             st.session_state.comparison_panel.update(new_panel_comparison)
 
-        '**Выбранная панель: **', st.session_state.current_panel['label']
-        p = figure(title = "I-V зависимость", plot_height=400, 
-                    x_axis_label='Напряжение (U), V ', y_axis_label='Сила тока (I), A')
-        p2 = figure(title = "P-V зависимость", plot_height=400, 
-                    x_axis_label='Напряжение (U), V ', y_axis_label='Мощность (P), W')
+        text['work3']['practice'][lang][6], st.session_state.current_panel['label'][lang]
+        p = figure(title = text['work3']['practice'][lang][7], plot_height=400, 
+                    x_axis_label=text['work3']['practice'][lang][8], y_axis_label=text['work3']['practice'][lang][9])
+        p2 = figure(title = text['work3']['practice'][lang][10], plot_height=400, 
+                    x_axis_label=text['work3']['practice'][lang][8], y_axis_label=text['work3']['practice'][lang][11])
         
         for key, value in st.session_state.current_panel['IVC']['month'].items():
             color = next(colors)
@@ -618,14 +564,14 @@ if tab_selected == works[3]:
         data = {'months':months, 'E_max':E_max, 'E_avg':E_avg, 'E_cor':E_cor}
         source = ColumnDataSource(data=data)
 
-        p3 = figure(x_range=months, plot_height=400, title="Среднемесячная выработка энергии",
-                    x_axis_label='Месяц', y_axis_label='Энергия, кВт*ч')
+        p3 = figure(x_range=months, plot_height=400, title=text['work3']['practice'][lang][12],
+                    x_axis_label='Месяц', y_axis_label=text['work3']['practice'][lang][13])
         p3.vbar(x=dodge('months', -0.2, range=p3.x_range), top='E_max', width=0.2, source=source,
-                    color="#c9d9d3", legend_label="Максимум")
+                    color="#c9d9d3", legend_label=text['work3']['practice'][lang][14])
         p3.vbar(x=dodge('months', 0, range=p3.x_range), top='E_avg', width=0.2, source=source,
-                    color="#718dbf", legend_label="Расчёт")
+                    color="#718dbf", legend_label=text['work3']['practice'][lang][15])
         p3.vbar(x=dodge('months', 0.2, range=p3.x_range), top='E_cor', width=0.2, source=source,
-                    color="#e84d60", legend_label="Коррекция")
+                    color="#e84d60", legend_label=text['work3']['practice'][lang][16])
 
         p3.x_range.range_padding = 0.1
         p3.y_range.start = 1
@@ -635,130 +581,51 @@ if tab_selected == works[3]:
         p3.add_tools(CrosshairTool())
         st.bokeh_chart(p3, use_container_width=True)
 
-        with st.expander('Задача 1'):
-            '''
-            На Самарской солнечной электростанции с координатами:  
-            > *53.01° с. ш.*  
-            > *49.80° в. д.*  
-
-            используются монокристаллические солнечные панели. Определите (с точностью до единиц), 
-            какой процент электроэнергии теряется летом за счет нагрева солнечный панелей окружающим 
-            воздухом. Считайте, что угол положения солнечных панелей оптимальный. 
-            '''
-
-            answer_1 = st.number_input('Процент потерянной электроэнергии:', step=1)
+        with st.expander(text['work3']['practice'][lang][17]):
+            st.markdown(text['work3']['practice'][lang][18])
+            answer_1 = st.number_input(text['work3']['practice'][lang][19], step=1)
             st.session_state.results['answer_1'] = answer_1
-        with st.expander('Задача 2'):
-            '''
-            В предыдущей работе рассматривалась задача, в которой гипотетически существующая 
-            компания «друзья Солнца» рассматривает для строительства очередной электростанции 
-            с 500 солнечных панелей несколько возможных площадок, а именно:   '''
-            '''
-            (1) В окрестностях ВДЦ «Смена»
-            > *44.7831° с. ш.*  
-            > *37.3946° в. д.*  
-
-            (2) в окрестностях города Оренбург  
-            > *51.8643° с. ш.*  
-            > *55.1015° в. д.*  
-
-            (3) в окрестностях города Горно-Алтайск  
-            > *51.9791° с. ш.*  
-            > *85.9813° в. д.*  
-            '''
-            '''
-            Оцените, при строительстве на какой из этих площадок с учетом влияния температуры 
-            окружающего воздуха средняя в течение года генерируемая электростанцией мощность будет 
-            максимальной. На электростанции планируется использовать органические солнечные панели, 
-            которые крепятся на стойках, обеспечивающих положение панели под углом 45° к горизонту. 
-            '''
-            answer_2 = st.selectbox('Выбранный вариант ответа: ', [1,2,3])
+        with st.expander(text['work3']['practice'][lang][20]):
+            st.markdown(text['work3']['practice'][lang][21])
+            st.markdown(text['work3']['practice'][lang][22])
+            answer_2 = st.selectbox(text['work3']['practice'][lang][23], [1,2,3])
             st.session_state.results['answer_2'] = answer_2
-        with st.expander('Задача 3'):
-            '''
-            До сих пор у нас на планете есть большое количество мест, которые еще ждут своего 
-            освоения и где практически не живут люди. Среди таких мест многие представляют интерес 
-            для археологов, которые отправляются в экспедиции в такие места. Для обеспечения 
-            быта археологов им необходима электроэнергия. Если речь идет об Арктической экспедиции, 
-            которая выпадает на “полярный день”, то можно рассмотреть возможность использования 
-            солнечных панелей в качестве источника электроэнергии.  
-            '''
-            '''
-            Рассмотрим гипотетическую экспедицию в места распространения Усть-полуйской культуры, 
-            представители которой проживали на территории полуострова Ямал. Считая, что экспедиция 
-            будет проводится в июне, а лагерь археологов будет находится в точке с координатами: 
-            > *65.557° с. ш.*  
-            > *69.074° в. д.*  
-
-            определите, какого типа солнечные панели стоит взять археологам для того, чтобы они 
-            обладали наибольшей эффективностью с учетом влияния температуры окружающего воздуха 
-            на их работу. Считайте, что угол положения солнечных панелей оптимальный. 
-            '''
-            answer_3 = st.selectbox('Выбранная солнечная панель: ', pv_list)
+        with st.expander(text['work3']['practice'][lang][24]):
+            st.markdown(text['work3']['practice'][lang][25])
+            st.markdown(text['work3']['practice'][lang][26])
+            answer_3 = st.selectbox(text['work3']['practice'][lang][27], pv_list)
             st.session_state.results['answer_3'] = answer_3
-        '''
-        ---
-        '''
+        st.markdown(text['work3']['practice'][lang][28])
     with conclusions_container:
-        with st.expander('Редактировать выводы'):
+        with st.expander(text['work3']['conclusions'][lang][0]):
             entered_conclusion = st.text_input('')
-            if st.button('Сохранить'):
+            if st.button(text['work3']['conclusions'][lang][1]):
                 st.session_state.results['conclusion'] = entered_conclusion
-        '''
-        ### Выводы  
-        '''
+        text['work3']['conclusions'][lang][2]
         if 'conclusion' in st.session_state.results:
             st.write(st.session_state.results['conclusion'])
-        '''
-        ---
-        '''
-        '''
-        *Вы можете выполнить автоматическую проверку результатов.*
-        '''
-        if st.button('Проверка результатов'):
+        st.markdown(text['work3']['conclusions'][lang][3])
+        st.markdown(text['work3']['conclusions'][lang][4])
+        if st.button(text['work3']['conclusions'][lang][5]):
             st.session_state.results['conclusion'] = entered_conclusion
             if len(st.session_state.results['conclusion']) < 300:
-                st.write('> Выводы не достаточно развернуты!')
+                st.write(text['work3']['conclusions'][lang][6])
             elif st.session_state.results['answer_1']!=1:
-                st.write('> Проверьте ответ к задаче 1!')
+                st.write(text['work3']['conclusions'][lang][7])
             elif st.session_state.results['answer_2']!=1:
-                st.write('> Проверьте ответ к задаче 2!')
-            elif st.session_state.results['answer_3']!='Монокристаллическая':
-                st.write('> Проверьте ответ к задаче 3!')        
+                st.write(text['work3']['conclusions'][lang][8])
+            elif st.session_state.results['answer_3']!=text['work3']['conclusions'][lang][9]:
+                st.write(text['work3']['conclusions'][lang][10])        
             else:
-                '''> #### Автоматические тесты успешно пройдены.  
-                '''
-                '''
-                *Если требуется, можно распечатать отчет при помощи Ctrl+P (Windows) или Cmd+P (MacOS)*
-                '''
+                st.markdown(text['work3']['conclusions'][lang][11])
+                st.markdown(text['work3']['conclusions'][lang][12])
 
 if tab_selected == works[4]:
     whatnext_container = st.container()
 
     with whatnext_container:
-        '''
-        ### Литература
-        '''
-        '''
-        - *Возобновляемая энергетика в современном мире: Учебное пособие* / 
-        О. С. Попель, В. Е. Фортов – 2-е изд., стер. – М: Издательский дом 
-        МЭИ, 2018. – 450 с.: ил.  
-        - *Энергетика в современном мире: Научное издание* / В. Е. Фортов, 
-        О. С. Попель – Долгопрудный: Издательский Дом «Интеллект», 2011. – 168 с.  
-        - *Изучение солнечных фотоэлектрических элементов: Учебно-методическое 
-        пособие* / Бессель В. В., Кучеров В. Г., Мингалеева Р. Д. – М.: Издательский 
-        центр РГУ нефти и газа (НИУ) имени И. М. Губкина, 2016. – 90 с.  
-        '''
-        '''
-        ### Web-ресурсы
-        '''
-        '''
-        - [Пост.Наука: Солнечная энергия](https://postnauka.ru/themes/solnechnaya-energiya)  
-        - [Wiki: Солнечная энергетика](https://ru.wikipedia.org/wiki/Солнечная_энергетика)  
-        - [Wiki: Солнечная генерация](https://ru.wikipedia.org/wiki/Солнечная_генерация)  
-        - [Wiki: Солнечная батарея](https://ru.wikipedia.org/wiki/Солнечная_батарея)
-        - [Wiki: Полимерная солнечная батарея](https://ru.wikipedia.org/wiki/Полимерные_солнечные_батареи)
-        - [Richard Komp: How do solar panels work?](https://www.youtube.com/watch?v=xKxrkht7CpY)
-        - [Lesics: How do solar cells work?](https://www.youtube.com/watch?v=L_q6LRgKpTw)
-        '''
+        st.markdown(text['work4'][lang][0])
+        st.markdown(text['work4'][lang][1])
+        st.markdown(text['work4'][lang][2])
+        st.markdown(text['work4'][lang][3])
 

@@ -92,7 +92,6 @@ elif local_label == 'local':
 
 pv_list = []
 for panel in all_panels:
-    print(panel['label'])
     pv_list.append(panel['label'][lang])
 
 def get_ivc(panel_label):

@@ -15,9 +15,14 @@ panels = [
         # },
         {
             "id": "3", 
-            "label": "Monocrystal", 
+            "label": {
+                'ENG':"Monocrystal", 
+                'RU':"Монокристаллическая", 
+                },
             "prop": {
-                    "label": "Monocrystal",
+                    "label": {'ENG':"Monocrystal", 
+                            'RU':"Монокристаллическая", 
+                            },
                     "I_max": 5.6,
                     "U_max": 17.8,
                     "Isc": 6.0,
@@ -29,9 +34,15 @@ panels = [
         },
         {
             "id": "4", 
-            "label": "Polycrystal", 
+            "label": {
+                'ENG':"Polycrystal", 
+                'RU':"Поликристаллическая", 
+            },
             "prop": {
-                    "label": "Polycrystal",
+                    "label": {
+                        'ENG':"Polycrystal", 
+                        'RU':"Поликристаллическая", 
+                        },
                     "I_max": 1.67,
                     "U_max": 18.0,
                     "Isc": 1.77,
@@ -43,16 +54,22 @@ panels = [
         },
         {
             "id": "5", 
-            "label": "Organic polymer", 
+            "label": {
+                    'ENG':"Organic", 
+                    'RU':"Полностью полимерная", 
+                    },
             "prop": {
-                    "label": "Organic polymer",
+                    "label": {
+                            'ENG':"Organic", 
+                            'RU':"Полностью полимерная", 
+                            },
                     "I_max": 0.01,
                     "U_max": 0.495,
                     "Isc": 0.0126,
                     "Uoc": 0.66,
                     "cell_area": 0.0001,
                     "cell_count": 1,
-                    "tC": 0.0
+                    "tC": -0.5
             }
         }
     ]

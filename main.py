@@ -27,6 +27,7 @@ if 'journal' not in st.session_state:
                                                     'Fill factor, %',
                                                     'Efficiency, %'])
 empty_panel = { # spec parameters
+                'id':None,
                 'label':None,
                 'I_max':None, 'U_max':None, 'Isc':None, 'Uoc':None,
                 'cell_area':None, 'cell_count':None,
@@ -56,34 +57,44 @@ if 'temperature' not in st.session_state:
                                     }
 # ==============================
 
-local_label = 'local'           #'local' or 'web' in case of using server with api
-
-if local_label == 'web':
-    API_URL = 'http://178.154.215.108/solar/panels'
-    all_panels = requests.get(API_URL).json()
-elif local_label == 'local':
-    all_panels = panels
+API_URL = 'http://178.154.215.108/solar/panels'
+all_panels = requests.get(API_URL).json()
 
 pv_list = []
 for panel in all_panels:
     pv_list.append(panel['label'])
 
-def get_ivc(panel_label):
+def get_spec(panel_label):
     result = empty_panel
-    if local_label == 'web':
-        for panel in all_panels:
-            if panel['label']==panel_label:
-                req = requests.get(panel['url']).json()
-                result.update(req)
-                print(result)
-                return result
-    if local_label == 'local':
-        for panel in all_panels:
-            if panel['label']==panel_label:
-                req = panel["prop"]
-                result.update(req)
-                print(result)
-                return result
+    for panel in all_panels:
+        if panel['label']==panel_label:
+            panel_URL = API_URL+'/'+str(panel['id'])
+            req = requests.get(panel_URL).json()
+            result.update(req)
+            result['id'] = panel['id']
+            return result
+
+def calculate_ivc(panel, flag, params = {'tiltAngle':['0'],
+                                        'latitude':['0'],
+                                        'longitude':['0'],
+                                        'area':['1']
+                                        }
+                ):
+    panel_URL = API_URL+'/'+str(panel['id'])+'/calculate'
+    if flag=='nom':               # returning only nominal values
+        req = requests.post(panel_URL, params).json()
+        panel.update(req)
+        Unom = panel['IVC']['nom']['I']
+        Inom = panel['IVC']['nom']['U']
+        Pnom = panel['IVC']['nom']['P']
+        return [Unom, Inom, Pnom]
+    elif flag=='all':
+        req = requests.post(panel_URL, params).json()
+        panel.update(req)
+        Unom = panel['IVC']['nom']['I']
+        Inom = panel['IVC']['nom']['U']
+        Pnom = panel['IVC']['nom']['P']
+        return [Unom, Inom, Pnom]
 
 works = ['Introduction', 
         'Work #1: Understanding IVC', 
@@ -256,23 +267,18 @@ if tab_selected == works[1]:
         '''
 
         if st.sidebar.button('Calculate'):
-            st.session_state.current_panel = get_ivc(selected_panel)
-            [st.session_state.current_panel['IVC']['nom']['U'], 
-            st.session_state.current_panel['IVC']['nom']['I'], 
-            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
-                                            U_max=st.session_state.current_panel['U_max'], 
-                                            Isc=st.session_state.current_panel['Isc'],
-                                            Uoc=st.session_state.current_panel['Uoc'], 
-                                            cell_area=st.session_state.current_panel['cell_area'],
-                                            cell_count=st.session_state.current_panel['cell_count']
-                                            )
+            st.session_state.current_panel = get_spec(selected_panel)
+            calculate_ivc(panel=st.session_state.current_panel, flag='nom')
+            for key in st.session_state.current_panel['IVC']['nom'].keys():
+                st.session_state.current_panel['IVC']['nom'][key] = np.array(st.session_state.current_panel['IVC']['nom'][key])
+
             st.session_state.current_panel['IVC']['nom']['I'] *= st.session_state.current_panel['cell_area']
             st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
         '**Selected panel: **', st.session_state.current_panel['label']
-        '**Number of cells in the solar module: **', st.session_state.current_panel['cell_count']
-        '**The area of one cell in the solar module: **', st.session_state.current_panel['cell_area']
+        '**Number of cells in the solar module: **', str(st.session_state.current_panel['cell_count'])
+        '**The area of one cell in the solar module: **', str(st.session_state.current_panel['cell_area'])
         p = figure(title = "I-V curve", plot_height=300, 
                     x_axis_label='Voltage (U), V ', y_axis_label='Current (I), A')
         p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
@@ -429,7 +435,7 @@ if tab_selected == works[2]:
         input_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
         if st.sidebar.button('Calculate'):
-            st.session_state.current_panel = get_ivc(selected_panel)
+            st.session_state.current_panel = get_spec(selected_panel)
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 
             st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
@@ -584,7 +590,7 @@ if tab_selected == works[3]:
         input_ang = st.sidebar.number_input('Tilt angle', min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
         if st.sidebar.button('Calculate'):
-            st.session_state.current_panel = get_ivc(selected_panel)
+            st.session_state.current_panel = get_spec(selected_panel)
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 
             st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 

@@ -25,6 +25,7 @@ colors = cycle(palette)
 # Session init
 # ==============================
 empty_panel = { # spec parameters
+                'id':None,
                 'label':{'ENG':0,'RU':0},
                 'I_max':0, 'U_max':0, 'Isc':0, 'Uoc':0,
                 'cell_area':0, 'cell_count':0,
@@ -92,10 +93,11 @@ for panel in all_panels:
 def get_spec(panel_label):
     result = empty_panel
     for panel in all_panels:
-        if panel['label']==panel_label:
+        if panel['label'][lang]==panel_label:
             panel_URL = API_URL+'/'+str(panel['id'])
             req = requests.get(panel_URL).json()
-            result.update(req)
+            result.update(req['props'])
+            result['label'] = req['label']
             result['id'] = panel['id']
             return result
 
@@ -108,10 +110,9 @@ def calculate_ivc(panel, flag, params = {'tiltAngle':['0'],
     panel_URL = API_URL+'/'+str(panel['id'])+'/calculate'
     if flag=='nom':               # returning only nominal values
         req = requests.post(panel_URL, params).json()
-        panel.update(req)
-        Unom = panel['IVC']['nom']['I']
-        Inom = panel['IVC']['nom']['U']
-        Pnom = panel['IVC']['nom']['P']
+        Unom = np.array(req['IVC']['nom']['I'])
+        Inom = np.array(req['IVC']['nom']['U'])
+        Pnom = np.array(req['IVC']['nom']['P'])
         return [Unom, Inom, Pnom]
     elif flag=='all':
         req = requests.post(panel_URL, params).json()
@@ -202,15 +203,15 @@ if tab_selected == works[1]:
 
         if st.sidebar.button('Calculate'):
             st.session_state.current_panel = get_spec(selected_panel)
-            calculate_ivc(panel=st.session_state.current_panel, flag='nom')
-            for key in st.session_state.current_panel['IVC']['nom'].keys():
-                st.session_state.current_panel['IVC']['nom'][key] = np.array(st.session_state.current_panel['IVC']['nom'][key])
+            [st.session_state.current_panel['IVC']['nom']['I'],
+            st.session_state.current_panel['IVC']['nom']['U'],
+            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(panel=st.session_state.current_panel, flag='nom')
 
             st.session_state.current_panel['IVC']['nom']['I'] *= st.session_state.current_panel['cell_area']
             st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
-        '**Selected panel: **', st.session_state.current_panel['label']
+        '**Selected panel: **', st.session_state.current_panel['label'][lang]
         '**Number of cells in the solar module: **', str(st.session_state.current_panel['cell_count'])
         '**The area of one cell in the solar module: **', str(st.session_state.current_panel['cell_area'])
         p = figure(title = "I-V curve", plot_height=300, 
@@ -349,6 +350,13 @@ if tab_selected == works[2]:
         
         if st.sidebar.button('Calculate'):
             st.session_state.current_panel = get_spec(selected_panel)
+
+            calculate_ivc(panel=st.session_state.current_panel, flag='all')
+            for key in st.session_state.current_panel['IVC']['nom'].keys():
+                st.session_state.current_panel['IVC']['nom'][key] = np.array(st.session_state.current_panel['IVC']['nom'][key])
+
+    
+            
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 
             st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 

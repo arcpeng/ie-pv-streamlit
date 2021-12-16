@@ -14,8 +14,9 @@ from panels import panels
 from itertools import cycle
 from bokeh.palettes import Dark2_5 as palette
 import localiser
+import math
 
-from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
+# from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
 
 # customization
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
@@ -25,8 +26,8 @@ colors = cycle(palette)
 # Session init
 # ==============================
 empty_panel = { # spec parameters
-                'id':None,
-                'label':{'ENG':0,'RU':0},
+                'id':'-',
+                'label':{'ENG':'-','RU':'-'},
                 'I_max':0, 'U_max':0, 'Isc':0, 'Uoc':0,
                 'cell_area':0, 'cell_count':0,
                 'tC':0,
@@ -83,8 +84,8 @@ tab_selected = st.sidebar.selectbox(text['sidebar_selector'][lang], works, on_ch
 
 # ==============================
 
-API_URL = 'http://178.154.215.108/solar/panels'
-all_panels = requests.get(API_URL).json()
+API_URL = 'http://178.154.215.108/solar/'
+all_panels = requests.get(API_URL+'panels/').json()
 
 pv_list = []
 for panel in all_panels:
@@ -94,33 +95,49 @@ def get_spec(panel_label):
     result = empty_panel
     for panel in all_panels:
         if panel['label'][lang]==panel_label:
-            panel_URL = API_URL+'/'+str(panel['id'])
+            panel_URL = API_URL+'panels/'+str(panel['id'])
             req = requests.get(panel_URL).json()
             result.update(req['props'])
             result['label'] = req['label']
             result['id'] = panel['id']
             return result
 
-def calculate_ivc(panel, flag, params = {'tiltAngle':['0'],
-                                        'latitude':['0'],
-                                        'longitude':['0'],
-                                        'area':['1']
-                                        }
-                ):
-    panel_URL = API_URL+'/'+str(panel['id'])+'/calculate'
-    if flag=='nom':               # returning only nominal values
-        req = requests.post(panel_URL, params).json()
-        Unom = np.array(req['IVC']['nom']['I'])
-        Inom = np.array(req['IVC']['nom']['U'])
-        Pnom = np.array(req['IVC']['nom']['P'])
-        return [Unom, Inom, Pnom]
-    elif flag=='all':
-        req = requests.post(panel_URL, params).json()
-        panel.update(req)
-        Unom = panel['IVC']['nom']['I']
-        Inom = panel['IVC']['nom']['U']
-        Pnom = panel['IVC']['nom']['P']
-        return [Unom, Inom, Pnom]
+def calculate_nom_ivc(panel):
+    panel_URL = API_URL+'nominal/'
+    params = {'I_max':panel['I_max'],
+            'U_max':panel['U_max'],
+            'Isc':panel['Isc'],
+            'Uoc':panel['Uoc'],
+            'cell_area':panel['cell_area'],
+            'cell_count':panel['cell_count'],
+            }
+    req = requests.get(panel_URL, params).json()
+    return req
+
+def calculate_all_ivc(panel, latitude, longitude, tilt_angle):
+    panel_URL = API_URL+'monthly/'
+    params = {'I_max':panel['I_max'],
+            'U_max':panel['U_max'],
+            'Isc':panel['Isc'],
+            'Uoc':panel['Uoc'],
+            'cell_area':panel['cell_area'],
+            'cell_count':panel['cell_count'],
+            'tC':panel['tC'],
+            'latitude':latitude,
+            'longitude':longitude,
+            'tilt_angle':tilt_angle,
+            }
+    req = requests.get(panel_URL, params).json()      
+    return req
+
+# function to convert Mercator to lon lat https://wiki.gis-lab.info/w/Пересчет_координат_из_Lat/Long_в_проекцию_Меркатора_и_обратно
+def LatLongToMerc(lon, lat): 
+    rLat = math.radians(lat)
+    rLong = math.radians(lon)
+    a=6378137.0
+    x=a*rLong
+    y=a*math.log(math.tan(math.pi/4+rLat/2))
+    return [x,y]
 
 # ==============================
 # Main page
@@ -194,28 +211,28 @@ if tab_selected == works[1]:
         st.markdown(text['work1']['work_description'][lang][1])
 
     with practice_container:
-        '''
-        ### Practice
-        First, from the left panel select the type of the solar panel. 
-        After pressing "Calculate" button you will display the key parameters 
-        of the selected panel, its I-V and P-V curves. Just try it! 
-        '''
+        st.markdown(text['work1']['practice'][lang][0])
 
-        if st.sidebar.button('Calculate'):
+        if st.sidebar.button(text['work1']['sidebar_button'][lang]):
             st.session_state.current_panel = get_spec(selected_panel)
+            req = calculate_nom_ivc(panel=st.session_state.current_panel)
             [st.session_state.current_panel['IVC']['nom']['I'],
             st.session_state.current_panel['IVC']['nom']['U'],
-            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(panel=st.session_state.current_panel, flag='nom')
+            st.session_state.current_panel['IVC']['nom']['P'],
+            st.session_state.current_panel['Efficiency']] = [np.array(req['Inom']), 
+                                                            np.array(req['Unom']), 
+                                                            np.array(req['Pnom']), 
+                                                            req['Efficiency']] 
 
             st.session_state.current_panel['IVC']['nom']['I'] *= st.session_state.current_panel['cell_area']
             st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
-        
-        '**Selected panel: **', st.session_state.current_panel['label'][lang]
-        '**Number of cells in the solar module: **', str(st.session_state.current_panel['cell_count'])
-        '**The area of one cell in the solar module: **', str(st.session_state.current_panel['cell_area'])
-        p = figure(title = "I-V curve", plot_height=300, 
-                    x_axis_label='Voltage (U), V ', y_axis_label='Current (I), A')
+
+        text['work1']['practice'][lang][1], str(st.session_state.current_panel['label'][lang])
+        text['work1']['practice'][lang][2], str(st.session_state.current_panel['cell_count'])
+        text['work1']['practice'][lang][3], str(st.session_state.current_panel['cell_area'])
+        p = figure(title = text['work1']['practice'][lang][4], plot_height=300, 
+                    x_axis_label=text['work1']['practice'][lang][5], y_axis_label=text['work1']['practice'][lang][6])
         p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
         p.add_tools(CrosshairTool())
         st.bokeh_chart(p, use_container_width=True)
@@ -348,34 +365,48 @@ if tab_selected == works[2]:
 
         input_ang = st.sidebar.number_input(text['work2']['practice'][lang][6], min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
-        if st.sidebar.button('Calculate'):
+        if st.sidebar.button(text['work2']['sidebar_button'][lang]):
             st.session_state.current_panel = get_spec(selected_panel)
-
-            calculate_ivc(panel=st.session_state.current_panel, flag='all')
-            for key in st.session_state.current_panel['IVC']['nom'].keys():
-                st.session_state.current_panel['IVC']['nom'][key] = np.array(st.session_state.current_panel['IVC']['nom'][key])
-
-    
             
-            [st.session_state.current_panel['IVC']['nom']['U'], 
-            st.session_state.current_panel['IVC']['nom']['I'], 
-            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
-                                            U_max=st.session_state.current_panel['U_max'], 
-                                            Isc=st.session_state.current_panel['Isc'],
-                                            Uoc=st.session_state.current_panel['Uoc'], 
-                                            cell_area=st.session_state.current_panel['cell_area'],
-                                            cell_count=st.session_state.current_panel['cell_count']
-                                            )
-            st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
+            req = calculate_nom_ivc(panel=st.session_state.current_panel)
+            [st.session_state.current_panel['IVC']['nom']['I'],
+            st.session_state.current_panel['IVC']['nom']['U'],
+            st.session_state.current_panel['IVC']['nom']['P'],
+            st.session_state.current_panel['Efficiency']] = [np.array(req['Inom']), 
+                                                            np.array(req['Unom']), 
+                                                            np.array(req['Pnom']), 
+                                                            req['Efficiency']] 
+
+            req = calculate_all_ivc(panel=st.session_state.current_panel, 
+                                    latitude=st.session_state.coordinates['lon'],
+                                    longitude=st.session_state.coordinates['lat'],
+                                    tilt_angle=input_ang)
+            st.session_state.current_panel['IVC']['month'] = req['IU_month_data']
+            st.session_state.current_panel['E_month'] = req['E_month_data']
+            for key in st.session_state.current_panel['IVC']['month'].keys():
+                st.session_state.current_panel['IVC']['month'][key] = np.array(st.session_state.current_panel['IVC']['month'][key])
+            for key in st.session_state.current_panel['E_month'].keys():
+                st.session_state.current_panel['E_month'][key] = np.array(st.session_state.current_panel['E_month'][key])
+            
+            # [st.session_state.current_panel['IVC']['nom']['U'], 
+            # st.session_state.current_panel['IVC']['nom']['I'], 
+            # st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
+            #                                 U_max=st.session_state.current_panel['U_max'], 
+            #                                 Isc=st.session_state.current_panel['Isc'],
+            #                                 Uoc=st.session_state.current_panel['Uoc'], 
+            #                                 cell_area=st.session_state.current_panel['cell_area'],
+            #                                 cell_count=st.session_state.current_panel['cell_count']
+            #                                 )
+            # st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
-            new_panel = calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 
-                                        input_lat=st.session_state.coordinates['lat'], 
-                                        input_ang=input_ang,
-                                        Inom=st.session_state.current_panel['IVC']['nom']['I'], 
-                                        Unom=st.session_state.current_panel['IVC']['nom']['U'],
-                                        tC = 0
-                                        )
-            st.session_state.current_panel.update(new_panel)
+            # new_panel = calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 
+            #                             input_lat=st.session_state.coordinates['lat'], 
+            #                             input_ang=input_ang,
+            #                             Inom=st.session_state.current_panel['IVC']['nom']['I'], 
+            #                             Unom=st.session_state.current_panel['IVC']['nom']['U'],
+            #                             tC = 0
+            #                             )
+            # st.session_state.current_panel.update(new_panel)
 
 
         text['work2']['practice'][lang][7], st.session_state.current_panel['label'][lang]
@@ -390,11 +421,12 @@ if tab_selected == works[2]:
                 line_width=2, legend_label='MAX')
         p2.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['P'], 
                 line_width=2, legend_label='MAX')
-
+                
         for key, value in st.session_state.current_panel['IVC']['month'].items():
+            st.write(key, value)
             color = next(colors)
-            p.line(value['U'], value['I'], color=color, legend_label=key)
-            p2.line(value['U'], value['P'], color=color, legend_label=key)
+            #p.line(value['U'], value['I'], color=color, legend_label=key)
+            #p2.line(value['U'], value['P'], color=color, legend_label=key)
         
         for i in [p, p2]:
             i.legend.location = "top_left"
@@ -525,7 +557,7 @@ if tab_selected == works[3]:
 
         input_ang = st.sidebar.number_input(text['work3']['practice'][lang][5], min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
-        if st.sidebar.button('Calculate'):
+        if st.sidebar.button(text['work3']['sidebar_button'][lang]):
             st.session_state.current_panel = get_spec(selected_panel)
             [st.session_state.current_panel['IVC']['nom']['U'], 
             st.session_state.current_panel['IVC']['nom']['I'], 

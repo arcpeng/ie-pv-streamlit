@@ -11,13 +11,10 @@ from bokeh.plotting import figure
 from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet, FactorRange
 from bokeh.transform import dodge
 from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
-from panels import panels
 from itertools import cycle
 from bokeh.palettes import Dark2_5 as palette
 import localiser
 import math
-
-# from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
 
 # customization
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')

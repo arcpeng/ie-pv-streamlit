@@ -1,4 +1,5 @@
 from pathlib import WindowsPath
+from bokeh.core.property.dataspec import AlphaSpec
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
@@ -10,12 +11,10 @@ from bokeh.plotting import figure
 from bokeh.models import CrosshairTool, CustomJS, ColumnDataSource, LabelSet, FactorRange
 from bokeh.transform import dodge
 from bokeh.tile_providers import CARTODBPOSITRON_RETINA, get_provider
-from panels import panels
 from itertools import cycle
 from bokeh.palettes import Dark2_5 as palette
 import localiser
-
-from nasaModel import sendNasaRequest, Tilt_Value, calculateTiltIrr, calculate_month_ivc, calculate_ivc, LatLongToMerc, correct_panel_spec
+import math
 
 # customization
 #st.set_page_config(page_title=None, page_icon=None, layout='wide', initial_sidebar_state='auto')
@@ -25,7 +24,8 @@ colors = cycle(palette)
 # Session init
 # ==============================
 empty_panel = { # spec parameters
-                'label':{'ENG':0,'RU':0},
+                'id':'-',
+                'label':{'ENG':'-','RU':'-'},
                 'I_max':0, 'U_max':0, 'Isc':0, 'Uoc':0,
                 'cell_area':0, 'cell_count':0,
                 'tC':0,
@@ -82,32 +82,67 @@ tab_selected = st.sidebar.selectbox(text['sidebar_selector'][lang], works, on_ch
 
 # ==============================
 
-local_label = 'local'           #'local' or 'web' in case of using server with api
-
-if local_label == 'web':
-    API_URL = 'http://178.154.215.108/solar/panels'
-    all_panels = requests.get(API_URL).json()
-elif local_label == 'local':
-    all_panels = panels
+API_URL = 'http://178.154.215.108/solar/'
+all_panels = requests.get(API_URL+'panels/').json()
 
 pv_list = []
 for panel in all_panels:
     pv_list.append(panel['label'][lang])
 
-def get_ivc(panel_label):
-    result = empty_panel.copy()
-    if local_label == 'web':
-        for panel in all_panels:
-            if panel['label'][lang]==panel_label:
-                req = requests.get(panel['url']).json()
-                result.update(req)
-                return result
-    if local_label == 'local':
-        for panel in all_panels:
-            if panel['label'][lang]==panel_label:
-                req = panel["prop"]
-                result.update(req)
-                return result
+def get_spec(panel_label):
+    result = empty_panel
+    for panel in all_panels:
+        if panel['label'][lang]==panel_label:
+            panel_URL = API_URL+'panels/'+str(panel['id'])
+            req = requests.get(panel_URL).json()
+            result.update(req['props'])
+            result['label'] = req['label']
+            result['id'] = panel['id']
+            return result
+
+def calculate_nom_ivc(panel):
+    panel_URL = API_URL+'nominal/'
+    params = {'I_max':panel['I_max'],
+            'U_max':panel['U_max'],
+            'Isc':panel['Isc'],
+            'Uoc':panel['Uoc'],
+            'cell_area':panel['cell_area'],
+            'cell_count':panel['cell_count'],
+            }
+    req = requests.get(panel_URL, params).json()
+    return req
+
+def calculate_all_ivc(panel, 
+                    latitude:float, 
+                    longitude:float, 
+                    tilt_angle:float, 
+                    tC:bool):
+    panel_URL = API_URL+'monthly/'
+    params = {'I_max':panel['I_max'],
+            'U_max':panel['U_max'],
+            'Isc':panel['Isc'],
+            'Uoc':panel['Uoc'],
+            'cell_area':panel['cell_area'],
+            'cell_count':panel['cell_count'],
+            'latitude':latitude,
+            'longitude':longitude,
+            'tilt_angle':tilt_angle,
+            }
+    if tC==True:
+        params['tC']=panel['tC']
+    else: 
+        params['tC']=0
+    req = requests.get(panel_URL, params).json()     
+    return req
+
+# function to convert Mercator to lon lat https://wiki.gis-lab.info/w/Пересчет_координат_из_Lat/Long_в_проекцию_Меркатора_и_обратно
+def LatLongToMerc(lon, lat): 
+    rLat = math.radians(lat)
+    rLong = math.radians(lon)
+    a=6378137.0
+    x=a*rLong
+    y=a*math.log(math.tan(math.pi/4+rLat/2))
+    return [x,y]
 
 # ==============================
 # Main page
@@ -184,26 +219,25 @@ if tab_selected == works[1]:
         st.markdown(text['work1']['practice'][lang][0])
 
         if st.sidebar.button(text['work1']['sidebar_button'][lang]):
-            st.session_state.current_panel = get_ivc(selected_panel)
-            [st.session_state.current_panel['IVC']['nom']['U'], 
-            st.session_state.current_panel['IVC']['nom']['I'], 
-            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
-                                            U_max=st.session_state.current_panel['U_max'], 
-                                            Isc=st.session_state.current_panel['Isc'],
-                                            Uoc=st.session_state.current_panel['Uoc'], 
-                                            cell_area=st.session_state.current_panel['cell_area'],
-                                            cell_count=st.session_state.current_panel['cell_count']
-                                            )
+            st.session_state.current_panel = get_spec(selected_panel)
+            req = calculate_nom_ivc(panel=st.session_state.current_panel)
+            [st.session_state.current_panel['IVC']['nom']['I'],
+            st.session_state.current_panel['IVC']['nom']['U'],
+            st.session_state.current_panel['IVC']['nom']['P'],
+            st.session_state.current_panel['Efficiency']] = [np.array(req['Inom']), 
+                                                            np.array(req['Unom']), 
+                                                            np.array(req['Pnom']), 
+                                                            req['Efficiency']] 
+
             st.session_state.current_panel['IVC']['nom']['I'] *= st.session_state.current_panel['cell_area']
             st.session_state.current_panel['IVC']['nom']['U'] *= st.session_state.current_panel['cell_count']
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
-        
-        text['work1']['practice'][lang][1], st.session_state.current_panel['label'][lang]
-        text['work1']['practice'][lang][2], st.session_state.current_panel['cell_count']
-        text['work1']['practice'][lang][3], st.session_state.current_panel['cell_area']
+
+        text['work1']['practice'][lang][1], str(st.session_state.current_panel['label'][lang])
+        text['work1']['practice'][lang][2], str(st.session_state.current_panel['cell_count'])
+        text['work1']['practice'][lang][3], str(st.session_state.current_panel['cell_area'])
         p = figure(title = text['work1']['practice'][lang][4], plot_height=300, 
-                    x_axis_label=text['work1']['practice'][lang][5], 
-                    y_axis_label=text['work1']['practice'][lang][6])
+                    x_axis_label=text['work1']['practice'][lang][5], y_axis_label=text['work1']['practice'][lang][6])
         p.line(st.session_state.current_panel['IVC']['nom']['U'], st.session_state.current_panel['IVC']['nom']['I'], line_width=2)
         p.add_tools(CrosshairTool())
         st.bokeh_chart(p, use_container_width=True)
@@ -310,9 +344,9 @@ if tab_selected == works[2]:
 
         col1, col2 = st.columns(2)
         with col1:
-            lon_inp = st.number_input(text['work2']['practice'][lang][3], min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+            lon_inp = st.number_input(text['work2']['practice'][lang][3], min_value=-180.00, max_value=180.00, value=0.00, step=1.0)
         with col2:
-            lat_inp = st.number_input(text['work2']['practice'][lang][4], min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+            lat_inp = st.number_input(text['work2']['practice'][lang][4], min_value=-67.00, max_value=67.00, value=0.00, step=1.0)
 
 
         if st.button(text['work2']['practice'][lang][5]):
@@ -329,6 +363,14 @@ if tab_selected == works[2]:
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="cross", size=35, color='red')
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=10, alpha=0.3, color='red')
+        lat_lim = LatLongToMerc(0, 67)[1]
+        lat_lim2 = LatLongToMerc(0, 85.05)[1]
+        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e30, height=lat_lim2-lat_lim, 
+                fill_alpha=0.1, line_alpha=0.1, fill_color='red', hatch_pattern='/', hatch_color='red', hatch_alpha=0.1)
+        lat_lim = LatLongToMerc(0, -67)[1]
+        lat_lim2 = LatLongToMerc(0, -85.05)[1]        
+        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e30, height=-(lat_lim2-lat_lim), 
+                fill_alpha=0.1, line_alpha=0.1, fill_color='red', hatch_pattern='/', hatch_color='red', hatch_alpha=0.1)
         p.add_tools(CrosshairTool())
         # add here callback event https://docs.bokeh.org/en/latest/docs/user_guide/interaction/callbacks.html
         # p.js_on_event(events.DoubleTap, callback)
@@ -336,29 +378,30 @@ if tab_selected == works[2]:
 
         input_ang = st.sidebar.number_input(text['work2']['practice'][lang][6], min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
-
         if st.sidebar.button(text['work2']['sidebar_button'][lang]):
-            st.session_state.current_panel = get_ivc(selected_panel)
-            [st.session_state.current_panel['IVC']['nom']['U'], 
-            st.session_state.current_panel['IVC']['nom']['I'], 
-            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
-                                            U_max=st.session_state.current_panel['U_max'], 
-                                            Isc=st.session_state.current_panel['Isc'],
-                                            Uoc=st.session_state.current_panel['Uoc'], 
-                                            cell_area=st.session_state.current_panel['cell_area'],
-                                            cell_count=st.session_state.current_panel['cell_count']
-                                            )
-            st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
-        
-            new_panel = calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 
-                                        input_lat=st.session_state.coordinates['lat'], 
-                                        input_ang=input_ang,
-                                        Inom=st.session_state.current_panel['IVC']['nom']['I'], 
-                                        Unom=st.session_state.current_panel['IVC']['nom']['U'],
-                                        tC = 0
-                                        )
-            st.session_state.current_panel.update(new_panel)
 
+            st.session_state.current_panel = get_spec(selected_panel)
+            
+            req = calculate_nom_ivc(panel=st.session_state.current_panel)
+            [st.session_state.current_panel['IVC']['nom']['I'],
+            st.session_state.current_panel['IVC']['nom']['U'],
+            st.session_state.current_panel['IVC']['nom']['P'],
+            st.session_state.current_panel['Efficiency']] = [np.array(req['Inom']), 
+                                                            np.array(req['Unom']), 
+                                                            np.array(req['Pnom']), 
+                                                            req['Efficiency']] 
+
+            req = calculate_all_ivc(panel=st.session_state.current_panel, 
+                                    latitude=st.session_state.coordinates['lat'],
+                                    longitude=st.session_state.coordinates['lon'],
+                                    tilt_angle=input_ang,
+                                    tC=False)
+            st.session_state.current_panel['IVC']['month'] = req['IU_month_data']
+            st.session_state.current_panel['E_month'] = req['E_month_data']
+
+            for month in st.session_state.current_panel['IVC']['month'].keys():
+                for key in st.session_state.current_panel['IVC']['month'][month].keys():
+                    st.session_state.current_panel['IVC']['month'][month][key] = np.array(st.session_state.current_panel['IVC']['month'][month][key])
 
         text['work2']['practice'][lang][7], st.session_state.current_panel['label'][lang]
         p = figure(title = text['work2']['practice'][lang][8], plot_height=400, 
@@ -481,9 +524,9 @@ if tab_selected == works[3]:
 
         col1, col2 = st.columns(2)
         with col1:
-            lon_inp = st.number_input(text['work3']['practice'][lang][2], min_value=0.00, max_value=180.00, value=0.00, step=1.0)
+            lon_inp = st.number_input(text['work3']['practice'][lang][2], min_value=-180.0, max_value=180.00, value=0.00, step=1.0)
         with col2:
-            lat_inp = st.number_input(text['work3']['practice'][lang][3], min_value=-85.00, max_value=85.00, value=0.00, step=1.0)
+            lat_inp = st.number_input(text['work3']['practice'][lang][3], min_value=-67.00, max_value=67.00, value=0.00, step=1.0)
 
 
         if st.button(text['work3']['practice'][lang][4]):
@@ -500,6 +543,14 @@ if tab_selected == works[3]:
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=25, alpha=0.3, color='red')
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="cross", size=35, color='red')
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=10, alpha=0.3, color='red')
+        lat_lim = LatLongToMerc(0, 67)[1]
+        lat_lim2 = LatLongToMerc(0, 85.05)[1]
+        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e30, height=lat_lim2-lat_lim, 
+                fill_alpha=0.1, line_alpha=0.1, fill_color='red', hatch_pattern='/', hatch_color='red', hatch_alpha=0.1)
+        lat_lim = LatLongToMerc(0, -67)[1]
+        lat_lim2 = LatLongToMerc(0, -85.05)[1]        
+        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e30, height=-(lat_lim2-lat_lim), 
+                fill_alpha=0.1, line_alpha=0.1, fill_color='red', hatch_pattern='/', hatch_color='red', hatch_alpha=0.1)
         p.add_tools(CrosshairTool())
         # add here callback event https://docs.bokeh.org/en/latest/docs/user_guide/interaction/callbacks.html
         # p.js_on_event(events.DoubleTap, callback)
@@ -507,18 +558,18 @@ if tab_selected == works[3]:
 
         input_ang = st.sidebar.number_input(text['work3']['practice'][lang][5], min_value=0.0, max_value=90.0, value=0.0, step = 1.0)
         
-
         if st.sidebar.button(text['work3']['sidebar_button'][lang]):
-            st.session_state.current_panel = get_ivc(selected_panel)
-            [st.session_state.current_panel['IVC']['nom']['U'], 
-            st.session_state.current_panel['IVC']['nom']['I'], 
-            st.session_state.current_panel['IVC']['nom']['P']] = calculate_ivc(I_max=st.session_state.current_panel['I_max'], 
-                                            U_max=st.session_state.current_panel['U_max'], 
-                                            Isc=st.session_state.current_panel['Isc'],
-                                            Uoc=st.session_state.current_panel['Uoc'], 
-                                            cell_area=st.session_state.current_panel['cell_area'],
-                                            cell_count=st.session_state.current_panel['cell_count']
-                                            )
+            st.session_state.current_panel = get_spec(selected_panel)
+
+            req = calculate_nom_ivc(panel=st.session_state.current_panel)
+            [st.session_state.current_panel['IVC']['nom']['I'],
+            st.session_state.current_panel['IVC']['nom']['U'],
+            st.session_state.current_panel['IVC']['nom']['P'],
+            st.session_state.current_panel['Efficiency']] = [np.array(req['Inom']), 
+                                                            np.array(req['Unom']), 
+                                                            np.array(req['Pnom']), 
+                                                            req['Efficiency']] 
+            
             st.session_state.current_panel['IVC']['nom']['P'] = st.session_state.current_panel['IVC']['nom']['I']*st.session_state.current_panel['IVC']['nom']['U']
         
             new_panel = calculate_month_ivc(input_lon=st.session_state.coordinates['lon'], 

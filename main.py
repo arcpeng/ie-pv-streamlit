@@ -545,11 +545,11 @@ if tab_selected == works[3]:
         p.scatter(x=st.session_state.coordinates['x_Merc'], y=st.session_state.coordinates['y_Merc'], marker="circle", size=10, alpha=0.3, color='red')
         lat_lim = LatLongToMerc(0, 67)[1]
         lat_lim2 = LatLongToMerc(0, 85.05)[1]
-        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e30, height=lat_lim2-lat_lim, 
+        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e15, height=lat_lim2-lat_lim, 
                 fill_alpha=0.1, line_alpha=0.1, fill_color='red', hatch_pattern='/', hatch_color='red', hatch_alpha=0.1)
         lat_lim = LatLongToMerc(0, -67)[1]
         lat_lim2 = LatLongToMerc(0, -85.05)[1]        
-        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e30, height=-(lat_lim2-lat_lim), 
+        p.rect(x=0, y=0.5*(lat_lim+lat_lim2), width=1e15, height=-(lat_lim2-lat_lim), 
                 fill_alpha=0.1, line_alpha=0.1, fill_color='red', hatch_pattern='/', hatch_color='red', hatch_alpha=0.1)
         p.add_tools(CrosshairTool())
         # add here callback event https://docs.bokeh.org/en/latest/docs/user_guide/interaction/callbacks.html
@@ -569,8 +569,6 @@ if tab_selected == works[3]:
                                                             np.array(req['Unom']), 
                                                             np.array(req['Pnom']), 
                                                             req['Efficiency']] 
-
-            st.session_state.comparison_panel.update(st.session_state.current_panel)
             
             req = calculate_all_ivc(panel=st.session_state.current_panel, 
                                     latitude=st.session_state.coordinates['lat'],
@@ -587,9 +585,6 @@ if tab_selected == works[3]:
                                     tC=False)
             st.session_state.comparison_panel['IVC']['month'] = req['IU_month_data']
             st.session_state.comparison_panel['E_month'] = req['E_month_data']                                    
-
-            st.session_state.current_panel
-            st.session_state.comparison_panel
 
         text['work3']['practice'][lang][6], st.session_state.current_panel['label'][lang]
         p = figure(title = text['work3']['practice'][lang][7], plot_height=400, 

@@ -682,4 +682,12 @@ if tab_selected == works[4]:
         st.markdown(text['work4'][lang][1])
         st.markdown(text['work4'][lang][2])
         st.markdown(text['work4'][lang][3])
+if tab_selected == works[5]:
+    whatnext_container = st.container()
+
+    with whatnext_container:
+        st.markdown(text['work4'][lang][0])
+        st.markdown(text['work4'][lang][1])
+        st.markdown(text['work4'][lang][2])
+        st.markdown(text['work4'][lang][3])
 

@@ -130,3 +130,6 @@ dmypy.json
 .env
 
 .DS_Store
+
+#BAT files
+*.bat
